@@ -9,6 +9,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/classes/ExcelParser.php';
 require_once __DIR__ . '/classes/Allocator.php';
 require_once __DIR__ . '/classes/PicklistGenerator.php';
+require_once __DIR__ . '/classes/WmsSheetUpdater.php';
 
 // Standalone — no auth required
 
@@ -63,7 +64,11 @@ try {
     $generator = new PicklistGenerator();
     $tempFile = $generator->generate($result);
 
-    // Step 6: Save results to JSON for print access
+    // Step 6: Generate updated WMS sheet (preserves formulas on other sheets)
+    $updater = new WmsSheetUpdater();
+    $updatedWmsFile = $updater->apply($file['tmp_name'], $result);
+
+    // Step 7: Save results to JSON for print access
     $resultId = uniqid('alloc_', true);
     $resultFile = sys_get_temp_dir() . '/allocator_' . $resultId . '.json';
     file_put_contents($resultFile, json_encode([
@@ -83,6 +88,7 @@ try {
         'picks' => $result['picks'],
         'replenishments' => $result['replenishments'],
         'picklist_file' => $tempFile,
+        'updated_wms_file' => $updatedWmsFile,
         'result_id' => $resultId,
         'stats' => [
             'sheets_processed' => count($parser->getSheets()),

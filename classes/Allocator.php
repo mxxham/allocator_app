@@ -219,9 +219,14 @@ class Allocator
 
                 // Step 1: Pick full pallets from bulk (FEFO)
                 if ($fullPallets > 0) {
-                    $bulkPicks = $this->pickFullPallets($material, $fullPallets, $upp, $orderNo);
-                    $result['picks'] = array_merge($result['picks'], $bulkPicks);
-                    $result['summary']['full_pallet_picks'] += count($bulkPicks);
+                    $bulkResult = $this->pickFullPallets($material, $fullPallets, $upp, $orderNo);
+                    $result['picks'] = array_merge($result['picks'], $bulkResult['picks']);
+                    $result['summary']['full_pallet_picks'] += count($bulkResult['picks']);
+
+                    if ($bulkResult['shortfall_pallets'] > 0) {
+                        $missingQty = $bulkResult['shortfall_pallets'] * $upp;
+                        $result['errors'][] = "Order {$orderNo}: {$material} bulk shortfall — {$bulkResult['shortfall_pallets']} full pallet(s) / {$missingQty} units unavailable.";
+                    }
                 }
 
                 // Step 2: Check if replenishment needed for remainder
@@ -302,11 +307,12 @@ class Allocator
         $binIdx = 0;
         while ($picked < $numPallets && $binIdx < count($bulkBins)) {
             $bin = $bulkBins[$binIdx];
-            $binIdx++;
 
             $stock = $this->stock[$bin] ?? null;
             if (!$stock || $stock['quantity'] < $upp) {
-                continue; // Skip depleted/insufficient bin, don't count as picked
+                // Bin exhausted or insufficient — move to next
+                $binIdx++;
+                continue;
             }
 
             $picks[] = [
@@ -319,12 +325,14 @@ class Allocator
                 'expiry_date' => $stock['expiry_date'],
             ];
 
-            // Update stock (bin becomes empty)
+            // Deduct from this bin (may still have stock for another pallet)
             $this->stock[$bin]['quantity'] -= $upp;
             $picked++;
         }
 
-        return $picks;
+        // Report how many pallets could NOT be fulfilled
+        $shortfallPallets = $numPallets - $picked;
+        return ['picks' => $picks, 'shortfall_pallets' => $shortfallPallets];
     }
 
     /**
