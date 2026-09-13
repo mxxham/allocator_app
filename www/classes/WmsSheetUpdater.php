@@ -1,22 +1,15 @@
 <?php
 /**
- * WMS Sheet Updater
- * Applies allocation deltas directly onto the original uploaded workbook's
- * WMS sheet, preserving every other sheet, formula, and formatting untouched.
+ * WMS Sheet Updater — ZIP-level surgical editor.
+ *
+ * Opens the .xlsx as a ZipArchive, modifies ONLY the WMS sheet XML,
+ * and leaves every other internal file byte-for-byte untouched.
+ * No PhpSpreadsheet dependency — zero risk of formula stripping.
  */
-
-require_once __DIR__ . '/../vendor/autoload.php';
 
 class WmsSheetUpdater
 {
-    private const HEADER_ROW = 4;
-    private const SHEET_NAME = 'WMS';
-
-    // Column letters in the WMS sheet
-    private const COL_LOKASI = 'H';
-    private const COL_ITEM   = 'L';
-    private const COL_BATCH  = 'I';
-    private const COL_QTY    = 'N';
+    private array $sharedStrings = [];
 
     /**
      * Apply stock deltas from an allocation run directly onto the original
@@ -28,76 +21,204 @@ class WmsSheetUpdater
      */
     public function apply(string $originalFilePath, array $allocationResult): string
     {
-        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($originalFilePath);
-        $reader->setReadDataOnly(true); // read formula cells as their last calculated
-                                        // value, not live formulas — eliminates the
-                                        // risk of PhpSpreadsheet stripping/failing to
-                                        // preserve cached results on untouched sheets
-        $spreadsheet = $reader->load($originalFilePath);
-
-        $wmsSheet = $spreadsheet->getSheetByName(self::SHEET_NAME);
-        if ($wmsSheet === null) {
-            throw new \RuntimeException('Sheet "' . self::SHEET_NAME . '" not found in uploaded file');
-        }
-
-        // Build Lokasi -> row-number index once, so each delta is an O(1) lookup
-        $rowIndex = $this->buildRowIndex($wmsSheet);
-
-        // Collect every stock-changing event from this allocation run
-        $deltas = $this->buildDeltas($allocationResult);
-
-        // Apply deltas to the sheet
-        foreach ($deltas as $lokasi => $change) {
-            $row = $rowIndex[$lokasi] ?? null;
-            if ($row === null) {
-                // Bin not found in the sheet — skip silently (shouldn't happen normally)
-                continue;
-            }
-
-            $currentQty = (float)$wmsSheet->getCell(self::COL_QTY . $row)->getValue();
-            $newQty = $currentQty + $change['qty_delta'];
-
-            // Update Qty
-            $wmsSheet->getCell(self::COL_QTY . $row)->setValue($newQty);
-
-            if ($newQty > 0) {
-                // Bin now holds stock — set/confirm the item and batch
-                $wmsSheet->getCell(self::COL_ITEM . $row)->setValue($change['item'] ?? '');
-                if (isset($change['batch'])) {
-                    $wmsSheet->getCell(self::COL_BATCH . $row)->setValue($change['batch']);
-                }
-            } else {
-                // Bin emptied out — clear item/batch (matching sheet's empty-bin convention)
-                $wmsSheet->getCell(self::COL_ITEM . $row)->setValue(null);
-                $wmsSheet->getCell(self::COL_BATCH . $row)->setValue(null);
-            }
-        }
-
         $outPath = tempnam(sys_get_temp_dir(), 'wms_updated_') . '.xlsx';
-        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $writer->setPreCalculateFormulas(false);
-        $writer->save($outPath);
+        copy($originalFilePath, $outPath);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($outPath) !== true) {
+            throw new \Exception("Could not open workbook as zip archive.");
+        }
+
+        $this->loadSharedStrings($zip); // read-only; this file is never written back
+
+        $sheetPath = $this->resolveSheetXmlPath($zip, 'WMS');
+        $xml = $zip->getFromName($sheetPath);
+        if ($xml === false) throw new \Exception("Could not read {$sheetPath}");
+
+        $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($xml);
+
+        $this->applyDeltas($dom, $allocationResult);
+
+        $zip->deleteName($sheetPath);
+        $zip->addFromString($sheetPath, $dom->saveXML());
+        $zip->close();
+
+        // Byte-level integrity check: every file except the one we changed
+        // must be identical between original and output.
+        $origZip = new \ZipArchive();
+        $origZip->open($originalFilePath);
+        $newZip = new \ZipArchive();
+        $newZip->open($outPath);
+        for ($i = 0; $i < $origZip->numFiles; $i++) {
+            $name = $origZip->getNameIndex($i);
+            if ($name === $sheetPath) continue; // the one file we intentionally changed
+            if ($origZip->getFromIndex($i) !== $newZip->getFromName($name)) {
+                $origZip->close();
+                $newZip->close();
+                throw new \Exception("INTEGRITY FAILURE: {$name} was unexpectedly modified!");
+            }
+        }
+        $origZip->close();
+        $newZip->close();
 
         return $outPath;
     }
 
-    /**
-     * Build a Lokasi -> row-number index from the WMS sheet.
-     * Scans from header+1 to the last row with data.
-     */
-    private function buildRowIndex($wmsSheet): array
+    private function loadSharedStrings(\ZipArchive $zip): void
     {
-        $rowIndex = [];
-        $highestRow = $wmsSheet->getHighestRow();
+        $xml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($xml === false) return;
+        $dom = new \DOMDocument();
+        $dom->loadXML($xml);
+        $items = $dom->getElementsByTagName('si');
+        foreach ($items as $i => $si) {
+            $this->sharedStrings[$i] = trim($si->textContent);
+        }
+    }
 
-        for ($r = self::HEADER_ROW + 1; $r <= $highestRow; $r++) {
-            $lokasi = trim((string)$wmsSheet->getCell(self::COL_LOKASI . $r)->getValue());
-            if ($lokasi !== '') {
-                $rowIndex[$lokasi] = $r;
+    private function resolveSheetXmlPath(\ZipArchive $zip, string $sheetName): string
+    {
+        $wb = new \DOMDocument(); $wb->loadXML($zip->getFromName('xl/workbook.xml'));
+        $rels = new \DOMDocument(); $rels->loadXML($zip->getFromName('xl/_rels/workbook.xml.rels'));
+
+        $rIdMap = [];
+        foreach ($rels->getElementsByTagName('Relationship') as $rel) {
+            $rIdMap[$rel->getAttribute('Id')] = $rel->getAttribute('Target');
+        }
+        foreach ($wb->getElementsByTagName('sheet') as $sheet) {
+            if ($sheet->getAttribute('name') === $sheetName) {
+                $rId = $sheet->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+                return 'xl/' . $rIdMap[$rId];
+            }
+        }
+        throw new \Exception("Sheet '{$sheetName}' not found.");
+    }
+
+    private function cellValue(\DOMElement $cell): ?string
+    {
+        $vNode = $cell->getElementsByTagName('v')->item(0);
+        if ($cell->getAttribute('t') === 'inlineStr') {
+            $isNode = $cell->getElementsByTagName('is')->item(0);
+            return $isNode ? trim($isNode->textContent) : null;
+        }
+        if ($vNode === null) return null;
+        $val = trim($vNode->textContent);
+        if ($cell->getAttribute('t') === 's') {
+            return $this->sharedStrings[(int)$val] ?? null;
+        }
+        return $val;
+    }
+
+    private function colLetterFromRef(string $ref): string
+    {
+        preg_match('/^([A-Z]+)\d+$/', $ref, $m);
+        return $m[1];
+    }
+
+    private function applyDeltas(\DOMDocument $dom, array $allocationResult): void
+    {
+        $sheetData = $dom->getElementsByTagName('sheetData')->item(0);
+        $rows = $sheetData->getElementsByTagName('row');
+
+        $headerRowNum = 4;
+        $colLetters = [];
+        $lokasiRowIndex = [];
+
+        foreach ($rows as $row) {
+            $rNum = (int)$row->getAttribute('r');
+            foreach ($row->getElementsByTagName('c') as $cell) {
+                if ($rNum === $headerRowNum) {
+                    $text = $this->cellValue($cell);
+                    if (in_array($text, ['Lokasi', 'item', 'Batch', 'Qty'], true)) {
+                        $colLetters[$text] = $this->colLetterFromRef($cell->getAttribute('r'));
+                    }
+                }
+            }
+            if ($rNum > $headerRowNum) {
+                foreach ($row->getElementsByTagName('c') as $cell) {
+                    if (isset($colLetters['Lokasi']) && $this->colLetterFromRef($cell->getAttribute('r')) === $colLetters['Lokasi']) {
+                        $lokasi = $this->cellValue($cell);
+                        if ($lokasi !== null && $lokasi !== '' && !isset($lokasiRowIndex[$lokasi])) {
+                            $lokasiRowIndex[$lokasi] = $row;
+                        }
+                    }
+                }
             }
         }
 
-        return $rowIndex;
+        $deltas = $this->buildDeltas($allocationResult);
+
+        foreach ($deltas as $lokasi => $change) {
+            $row = $lokasiRowIndex[$lokasi] ?? null;
+            if ($row === null) continue;
+            $rNum = (int)$row->getAttribute('r');
+
+            $currentQty = (float)($this->findCellValueInRow($row, $colLetters['Qty']) ?? 0);
+            $newQty = $currentQty + $change['qty_delta'];
+
+            $this->setNumericCell($dom, $row, $colLetters['Qty'] . $rNum, $newQty);
+
+            if ($newQty > 0) {
+                $this->setInlineStringCell($dom, $row, $colLetters['item'] . $rNum, (string)$change['item']);
+                if (isset($change['batch'])) {
+                    $this->setInlineStringCell($dom, $row, $colLetters['Batch'] . $rNum, (string)$change['batch']);
+                }
+            } else {
+                $this->clearCell($dom, $row, $colLetters['item'] . $rNum);
+                $this->clearCell($dom, $row, $colLetters['Batch'] . $rNum);
+            }
+        }
+    }
+
+    private function findCellValueInRow(\DOMElement $row, string $colLetter): ?string
+    {
+        foreach ($row->getElementsByTagName('c') as $cell) {
+            if ($this->colLetterFromRef($cell->getAttribute('r')) === $colLetter) {
+                return $this->cellValue($cell);
+            }
+        }
+        return null;
+    }
+
+    private function getOrCreateCell(\DOMDocument $dom, \DOMElement $row, string $ref): \DOMElement
+    {
+        foreach ($row->getElementsByTagName('c') as $cell) {
+            if ($cell->getAttribute('r') === $ref) return $cell;
+        }
+        $cell = $dom->createElement('c');
+        $cell->setAttribute('r', $ref);
+        $row->appendChild($cell);
+        return $cell;
+    }
+
+    private function setNumericCell(\DOMDocument $dom, \DOMElement $row, string $ref, float $value): void
+    {
+        $cell = $this->getOrCreateCell($dom, $row, $ref);
+        $cell->removeAttribute('t');
+        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
+        $v = $dom->createElement('v', (string)$value);
+        $cell->appendChild($v);
+    }
+
+    private function setInlineStringCell(\DOMDocument $dom, \DOMElement $row, string $ref, string $value): void
+    {
+        $cell = $this->getOrCreateCell($dom, $row, $ref);
+        $cell->setAttribute('t', 'inlineStr');
+        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
+        $is = $dom->createElement('is');
+        $t = $dom->createElement('t');
+        $t->appendChild($dom->createTextNode($value));
+        $is->appendChild($t);
+        $cell->appendChild($is);
+    }
+
+    private function clearCell(\DOMDocument $dom, \DOMElement $row, string $ref): void
+    {
+        $cell = $this->getOrCreateCell($dom, $row, $ref);
+        $cell->removeAttribute('t');
+        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
     }
 
     /**
@@ -113,33 +234,18 @@ class WmsSheetUpdater
         $deltas = [];
 
         // Picks: each pick decrements the source bin
-        foreach ($allocationResult['picks'] ?? [] as $pick) {
-            $loc = $pick['location'];
-            if (!isset($deltas[$loc])) {
-                $deltas[$loc] = ['item' => $pick['item_code'], 'batch' => $pick['batch_number'] ?? null, 'qty_delta' => 0];
-            }
-            $deltas[$loc]['qty_delta'] -= $pick['quantity'];
-            $deltas[$loc]['item'] = $pick['item_code'];
-            if (isset($pick['batch_number'])) {
-                $deltas[$loc]['batch'] = $pick['batch_number'];
-            }
+        foreach ($allocationResult['picks'] as $pick) {
+            $deltas[$pick['location']]['qty_delta'] = ($deltas[$pick['location']]['qty_delta'] ?? 0) - $pick['quantity'];
+            $deltas[$pick['location']]['item'] = $pick['item_code'];
+            $deltas[$pick['location']]['batch'] = $pick['batch_number'] ?? null;
         }
 
         // Replenishments: decrement source, increment destination
-        foreach ($allocationResult['replenishments'] ?? [] as $rep) {
-            $from = $rep['from_location'];
-            if (!isset($deltas[$from])) {
-                $deltas[$from] = ['item' => $rep['item_code'], 'batch' => null, 'qty_delta' => 0];
-            }
-            $deltas[$from]['qty_delta'] -= $rep['quantity'];
-            $deltas[$from]['item'] = $rep['item_code'];
-
-            $to = $rep['to_location'];
-            if (!isset($deltas[$to])) {
-                $deltas[$to] = ['item' => $rep['item_code'], 'batch' => null, 'qty_delta' => 0];
-            }
-            $deltas[$to]['qty_delta'] += $rep['quantity'];
-            $deltas[$to]['item'] = $rep['item_code'];
+        foreach ($allocationResult['replenishments'] as $rep) {
+            $deltas[$rep['from_location']]['qty_delta'] = ($deltas[$rep['from_location']]['qty_delta'] ?? 0) - $rep['quantity'];
+            $deltas[$rep['from_location']]['item'] = $rep['item_code'];
+            $deltas[$rep['to_location']]['qty_delta'] = ($deltas[$rep['to_location']]['qty_delta'] ?? 0) + $rep['quantity'];
+            $deltas[$rep['to_location']]['item'] = $rep['item_code'];
         }
 
         return $deltas;
