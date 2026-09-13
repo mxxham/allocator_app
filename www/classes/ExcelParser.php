@@ -308,6 +308,13 @@ class ExcelParser
 
         $val = trim((string)$val);
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) return $val;
+        // d-Mon-yy format (e.g. 3-Sep-26, 28-Aug-30)
+        if (preg_match('/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/', $val, $m)) {
+            $ts = strtotime($val);
+            if ($ts !== false) {
+                return date('Y-m-d', $ts);
+            }
+        }
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $val, $m)) {
             $d = (int)$m[1]; $mo = (int)$m[2]; $y = (int)$m[3];
             return sprintf('%04d-%02d-%02d', $y, $mo, $d);

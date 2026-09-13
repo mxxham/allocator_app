@@ -1,194 +1,170 @@
 <?php
 /**
- * Inbound Merger
- * Merges inbound receipts into a WMS snapshot.
- * Purely additive — adds quantities to existing bins, reports conflicts.
+ * Inbound Merger — ZIP-level surgical editor.
+ *
+ * Merges inbound receipts into a WMS snapshot. Accepts either:
+ *   - A standalone single-sheet file with putaway-format columns
+ *   - A full multi-sheet workbook with a sheet containing "putaway" in the name
+ *
+ * Uses ExcelParser's column-matching logic (BIN Location / Item Code /
+ * ACTUAL QTY / Batch No / Expired Date) without rewriting it.
+ *
+ * Merge is purely additive: adds quantities to existing bins, flags conflicts
+ * (different item in same bin) rather than silently overwriting.
  */
+require_once __DIR__ . '/SharedSheetEditor.php';
+require_once __DIR__ . '/ExcelParser.php';
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-class InboundMerger
+class InboundMerger extends SharedSheetEditor
 {
-    private const HEADER_ROW = 4;
-    private const SHEET_NAME = 'WMS';
+    // WMS sheet column letters — must match WmsSheetUpdater exactly
+    private const WMS_COL_LOKASI = 'H';
+    private const WMS_COL_ITEM   = 'L';
+    private const WMS_COL_BATCH  = 'I';
+    private const WMS_COL_EXPIRY = 'K';
+    private const WMS_COL_QTY    = 'N';
 
-    // Column letters in the WMS sheet — must match WmsSheetUpdater exactly
-    private const COL_LOKASI  = 'H';
-    private const COL_ITEM    = 'L';
-    private const COL_BATCH   = 'I';
-    private const COL_EXPIRY  = 'K';
-    private const COL_QTY     = 'N';
+    private const WMS_HEADER_ROW = 4;
 
     /**
      * Merge inbound receipts into a WMS workbook.
      *
      * @param string $wmsFilePath      Path to the existing WMS .xlsx
      * @param string $inboundFilePath  Path to the inbound receipt .xlsx
-     * @return string JSON { "file": "<path>", "unmatched": [...] }
+     * @return string Path to the merged output file
+     * @throws \Exception on zip/integrity errors
      */
     public function apply(string $wmsFilePath, string $inboundFilePath): string
     {
-        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($wmsFilePath);
-        $reader->setReadDataOnly(true); // read formula cells as their last calculated
-                                        // value, not live formulas — eliminates the
-                                        // risk of PhpSpreadsheet stripping/failing to
-                                        // preserve cached results on untouched sheets
-        $spreadsheet = $reader->load($wmsFilePath);
+        // 1. Parse inbound file (standalone or multi-sheet)
+        $receipts = $this->parseInboundReceipts($inboundFilePath);
 
-        $wmsSheet = $spreadsheet->getSheetByName(self::SHEET_NAME);
-        if ($wmsSheet === null) {
-            throw new \RuntimeException('Sheet "' . self::SHEET_NAME . '" not found in WMS file');
+        // 2. Copy WMS to temp output
+        $outPath = tempnam(sys_get_temp_dir(), 'wms_merged_') . '.xlsx';
+        copy($wmsFilePath, $outPath);
+
+        // 3. Open output as zip, load shared strings
+        $zip = new \ZipArchive();
+        if ($zip->open($outPath) !== true) {
+            throw new \Exception("Could not open workbook as zip archive.");
+        }
+        $this->loadSharedStrings($zip);
+
+        // 4. Load WMS sheet XML
+        $sheetPath = $this->resolveSheetXmlPath($zip, 'WMS');
+        $xml = $zip->getFromName($sheetPath);
+        if ($xml === false) throw new \Exception("Could not read {$sheetPath}");
+
+        $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($xml);
+
+        // 5. Build WMS row index and merge receipts
+        $unmatched = $this->mergeReceipts($dom, $receipts);
+
+        // 6. Write modified sheet back to zip
+        $zip->deleteName($sheetPath);
+        $zip->addFromString($sheetPath, $dom->saveXML());
+        $zip->close();
+
+        // 7. Verify byte-level integrity (only WMS sheet changed)
+        $this->verifyIntegrity($wmsFilePath, $outPath, $sheetPath);
+
+        // 8. Surface conflicts/missing bins to the caller
+        if (!empty($unmatched)) {
+            file_put_contents($outPath . '.unmatched.json', json_encode($unmatched, JSON_PRETTY_PRINT));
         }
 
-        // Build Lokasi -> row-number index once
-        $rowIndex = $this->buildRowIndex($wmsSheet);
+        return $outPath;
+    }
 
-        // Parse inbound file
-        $inboundRows = $this->parseInbound($inboundFilePath);
+    /**
+     * Parse inbound file. Supports two modes:
+     *   1. Single-sheet file — uses the active sheet directly
+     *   2. Multi-sheet workbook — finds sheet with "putaway" in the name (case-insensitive)
+     *
+     * Reuses ExcelParser::parsePutaway()'s column-detection logic:
+     *   Scans header row for keywords, then reads columns by position.
+     *
+     * @return array<int, array{location: string, item_code: string, qty: float, batch_number: string, expiry_date: string|null}>
+     */
+    private function parseInboundReceipts(string $filePath): array
+    {
+        // Delegate parsing to ExcelParser which handles both single-sheet and
+        // multi-sheet detection using the same logic as parsePutaway().
+        $parser = new ExcelParser();
+        if (!$parser->load($filePath)) {
+            throw new \Exception('Gagal membaca file inbound: ' . implode(', ', $parser->getErrors()));
+        }
+
+        $putaway = $parser->parsePutaway();
+        if (empty($putaway)) {
+            throw new \Exception('Tidak ada data ditemukan di file inbound. Pastikan file memiliki kolom: BIN Location, Item Code, ACTUAL QTY, Batch No, Expired Date.');
+        }
+
+        return $putaway;
+    }
+
+    /**
+     * Build WMS Lokasi → DOMElement row index, then merge each receipt.
+     *
+     * @return array<int, array> Unmatched receipts (missing bins, conflicts)
+     */
+    private function mergeReceipts(\DOMDocument $dom, array $receipts): array
+    {
+        $sheetData = $dom->getElementsByTagName('sheetData')->item(0);
+        $rows = $sheetData->getElementsByTagName('row');
+
+        // Build index: Lokasi → DOMElement row
+        $lokasiRowIndex = [];
+        foreach ($rows as $row) {
+            $rNum = (int)$row->getAttribute('r');
+            if ($rNum <= self::WMS_HEADER_ROW) continue;
+
+            $lokasi = $this->findCellValueInRow($row, self::WMS_COL_LOKASI);
+            if ($lokasi !== null && $lokasi !== '' && !isset($lokasiRowIndex[$lokasi])) {
+                $lokasiRowIndex[$lokasi] = $row;
+            }
+        }
 
         $unmatched = [];
 
-        foreach ($inboundRows as $inbound) {
-            $location   = $inbound['location'];
-            $itemCode   = $inbound['item_code'];
-            $qty        = $inbound['qty'];
-            $batch      = $inbound['batch'];
-            $expiry     = $inbound['expiry'];
-
-            $row = $rowIndex[$location] ?? null;
+        foreach ($receipts as $receipt) {
+            $location = strtoupper($receipt['location']);
+            $row = $lokasiRowIndex[$location] ?? null;
 
             if ($row === null) {
-                // Bin not found in the sheet
-                $unmatched[] = [
-                    'location' => $location,
-                    'item'     => $itemCode,
-                    'qty'      => $qty,
-                    'reason'   => 'Bin not found in WMS sheet',
-                ];
+                $unmatched[] = $receipt + ['reason' => 'Bin not found in WMS sheet'];
                 continue;
             }
 
+            $rNum = (int)$row->getAttribute('r');
+
             // Read current bin state
-            $currentItem = trim((string)$wmsSheet->getCell(self::COL_ITEM . $row)->getValue());
-            $currentQty  = (float)$wmsSheet->getCell(self::COL_QTY . $row)->getValue();
+            $currentItem = trim((string)($this->findCellValueInRow($row, self::WMS_COL_ITEM) ?? ''));
+            $currentQty  = (float)($this->findCellValueInRow($row, self::WMS_COL_QTY) ?? 0);
 
             // Conflict: bin holds a different item
-            if ($currentItem !== '' && $currentItem !== $itemCode) {
-                $unmatched[] = [
-                    'location'      => $location,
-                    'item'          => $itemCode,
-                    'qty'           => $qty,
-                    'reason'        => 'Conflict — bin contains different item "' . $currentItem . '"',
-                    'existing_item' => $currentItem,
-                ];
+            if ($currentQty > 0 && $currentItem !== '' && $currentItem !== (string)$receipt['item_code']) {
+                $unmatched[] = $receipt + ['reason' => "Bin already holds different item {$currentItem}"];
                 continue;
             }
 
             // Safe to merge: empty bin or same item — add qty
-            $newQty = $currentQty + $qty;
-            $wmsSheet->getCell(self::COL_QTY . $row)->setValue($newQty);
-            $wmsSheet->getCell(self::COL_ITEM . $row)->setValue($itemCode);
+            $newQty = $currentQty + $receipt['quantity'];
+            $this->setNumericCell($dom, $row, self::WMS_COL_QTY . $rNum, $newQty);
 
-            if ($batch !== '') {
-                $wmsSheet->getCell(self::COL_BATCH . $row)->setValue($batch);
+            if ($receipt['item_code'] !== '') {
+                $this->setInlineStringCell($dom, $row, self::WMS_COL_ITEM . $rNum, (string)$receipt['item_code']);
             }
-            if ($expiry !== '') {
-                $wmsSheet->getCell(self::COL_EXPIRY . $row)->setValue($expiry);
+            if (!empty($receipt['batch_number'])) {
+                $this->setInlineStringCell($dom, $row, self::WMS_COL_BATCH . $rNum, (string)$receipt['batch_number']);
             }
-        }
-
-        $outPath = tempnam(sys_get_temp_dir(), 'wms_inbound_') . '.xlsx';
-        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $writer->setPreCalculateFormulas(false);
-        $writer->save($outPath);
-
-        return json_encode([
-            'file'     => $outPath,
-            'unmatched' => $unmatched,
-        ], JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Build a Lokasi -> row-number index from the WMS sheet.
-     * Scans from header+1 to the last row with data.
-     */
-    private function buildRowIndex($wmsSheet): array
-    {
-        $rowIndex = [];
-        $highestRow = $wmsSheet->getHighestRow();
-
-        for ($r = self::HEADER_ROW + 1; $r <= $highestRow; $r++) {
-            $lokasi = trim((string)$wmsSheet->getCell(self::COL_LOKASI . $r)->getValue());
-            if ($lokasi !== '') {
-                $rowIndex[$lokasi] = $r;
+            if (!empty($receipt['expiry_date'])) {
+                $this->setInlineStringCell($dom, $row, self::WMS_COL_EXPIRY . $rNum, (string)$receipt['expiry_date']);
             }
         }
 
-        return $rowIndex;
-    }
-
-    /**
-     * Parse an inbound receipt Excel file.
-     * Expects header at row 1: Location | Item Code | Qty | Batch Number | Expiry Date
-     *
-     * @return array<int, array{location: string, item_code: string, qty: float, batch: string, expiry: string}>
-     */
-    private function parseInbound(string $filePath): array
-    {
-        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
-        $reader->setReadDataOnly(true);
-        $spreadsheet = $reader->load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // Discover column positions from header row
-        $colLocation = $this->findColumn($sheet, 1, 'Location');
-        $colItem     = $this->findColumn($sheet, 1, 'Item Code');
-        $colQty      = $this->findColumn($sheet, 1, 'Qty');
-        $colBatch    = $this->findColumn($sheet, 1, 'Batch Number');
-        $colExpiry   = $this->findColumn($sheet, 1, 'Expiry Date');
-
-        $rows = [];
-        $highestRow = $sheet->getHighestRow();
-
-        for ($r = 2; $r <= $highestRow; $r++) {
-            $location = trim((string)$sheet->getCell($colLocation . $r)->getValue());
-            if ($location === '') {
-                continue; // skip empty rows
-            }
-
-            $itemCode = trim((string)$sheet->getCell($colItem . $r)->getValue());
-            $qty      = (float)$sheet->getCell($colQty . $r)->getValue();
-            $batch    = $colBatch ? trim((string)$sheet->getCell($colBatch . $r)->getValue()) : '';
-            $expiry   = $colExpiry ? trim((string)$sheet->getCell($colExpiry . $r)->getValue()) : '';
-
-            $rows[] = [
-                'location'  => $location,
-                'item_code' => $itemCode,
-                'qty'       => $qty,
-                'batch'     => $batch,
-                'expiry'    => $expiry,
-            ];
-        }
-
-        $spreadsheet->disconnectWorksheets();
-        return $rows;
-    }
-
-    /**
-     * Find the column letter that contains a given header name in a specific row.
-     * Returns the column letter (e.g. 'A', 'B') or empty string if not found.
-     */
-    private function findColumn($sheet, int $row, string $name): string
-    {
-        $highestCol = $sheet->getHighestColumn();
-
-        for ($c = 'A'; $c !== chr(ord($highestCol) + 1); $c++) {
-            $value = trim((string)$sheet->getCell($c . $row)->getValue());
-            if ($value === $name) {
-                return $c;
-            }
-        }
-
-        return '';
+        return $unmatched;
     }
 }

@@ -6,11 +6,10 @@
  * and leaves every other internal file byte-for-byte untouched.
  * No PhpSpreadsheet dependency — zero risk of formula stripping.
  */
+require_once __DIR__ . '/SharedSheetEditor.php';
 
-class WmsSheetUpdater
+class WmsSheetUpdater extends SharedSheetEditor
 {
-    private array $sharedStrings = [];
-
     /**
      * Apply stock deltas from an allocation run directly onto the original
      * uploaded workbook's WMS sheet.
@@ -29,7 +28,7 @@ class WmsSheetUpdater
             throw new \Exception("Could not open workbook as zip archive.");
         }
 
-        $this->loadSharedStrings($zip); // read-only; this file is never written back
+        $this->loadSharedStrings($zip);
 
         $sheetPath = $this->resolveSheetXmlPath($zip, 'WMS');
         $xml = $zip->getFromName($sheetPath);
@@ -45,76 +44,9 @@ class WmsSheetUpdater
         $zip->addFromString($sheetPath, $dom->saveXML());
         $zip->close();
 
-        // Byte-level integrity check: every file except the one we changed
-        // must be identical between original and output.
-        $origZip = new \ZipArchive();
-        $origZip->open($originalFilePath);
-        $newZip = new \ZipArchive();
-        $newZip->open($outPath);
-        for ($i = 0; $i < $origZip->numFiles; $i++) {
-            $name = $origZip->getNameIndex($i);
-            if ($name === $sheetPath) continue; // the one file we intentionally changed
-            if ($origZip->getFromIndex($i) !== $newZip->getFromName($name)) {
-                $origZip->close();
-                $newZip->close();
-                throw new \Exception("INTEGRITY FAILURE: {$name} was unexpectedly modified!");
-            }
-        }
-        $origZip->close();
-        $newZip->close();
+        $this->verifyIntegrity($originalFilePath, $outPath, $sheetPath);
 
         return $outPath;
-    }
-
-    private function loadSharedStrings(\ZipArchive $zip): void
-    {
-        $xml = $zip->getFromName('xl/sharedStrings.xml');
-        if ($xml === false) return;
-        $dom = new \DOMDocument();
-        $dom->loadXML($xml);
-        $items = $dom->getElementsByTagName('si');
-        foreach ($items as $i => $si) {
-            $this->sharedStrings[$i] = trim($si->textContent);
-        }
-    }
-
-    private function resolveSheetXmlPath(\ZipArchive $zip, string $sheetName): string
-    {
-        $wb = new \DOMDocument(); $wb->loadXML($zip->getFromName('xl/workbook.xml'));
-        $rels = new \DOMDocument(); $rels->loadXML($zip->getFromName('xl/_rels/workbook.xml.rels'));
-
-        $rIdMap = [];
-        foreach ($rels->getElementsByTagName('Relationship') as $rel) {
-            $rIdMap[$rel->getAttribute('Id')] = $rel->getAttribute('Target');
-        }
-        foreach ($wb->getElementsByTagName('sheet') as $sheet) {
-            if ($sheet->getAttribute('name') === $sheetName) {
-                $rId = $sheet->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
-                return 'xl/' . $rIdMap[$rId];
-            }
-        }
-        throw new \Exception("Sheet '{$sheetName}' not found.");
-    }
-
-    private function cellValue(\DOMElement $cell): ?string
-    {
-        $vNode = $cell->getElementsByTagName('v')->item(0);
-        if ($cell->getAttribute('t') === 'inlineStr') {
-            $isNode = $cell->getElementsByTagName('is')->item(0);
-            return $isNode ? trim($isNode->textContent) : null;
-        }
-        if ($vNode === null) return null;
-        $val = trim($vNode->textContent);
-        if ($cell->getAttribute('t') === 's') {
-            return $this->sharedStrings[(int)$val] ?? null;
-        }
-        return $val;
-    }
-
-    private function colLetterFromRef(string $ref): string
-    {
-        preg_match('/^([A-Z]+)\d+$/', $ref, $m);
-        return $m[1];
     }
 
     private function applyDeltas(\DOMDocument $dom, array $allocationResult): void
@@ -150,6 +82,14 @@ class WmsSheetUpdater
 
         $deltas = $this->buildDeltas($allocationResult);
 
+        // Validate all required columns were found
+        $requiredCols = ['Lokasi', 'item', 'Batch', 'Qty'];
+        foreach ($requiredCols as $col) {
+            if (!isset($colLetters[$col])) {
+                throw new \Exception("Column '{$col}' not found in WMS sheet header (row {$headerRowNum})");
+            }
+        }
+
         foreach ($deltas as $lokasi => $change) {
             $row = $lokasiRowIndex[$lokasi] ?? null;
             if ($row === null) continue;
@@ -172,55 +112,6 @@ class WmsSheetUpdater
         }
     }
 
-    private function findCellValueInRow(\DOMElement $row, string $colLetter): ?string
-    {
-        foreach ($row->getElementsByTagName('c') as $cell) {
-            if ($this->colLetterFromRef($cell->getAttribute('r')) === $colLetter) {
-                return $this->cellValue($cell);
-            }
-        }
-        return null;
-    }
-
-    private function getOrCreateCell(\DOMDocument $dom, \DOMElement $row, string $ref): \DOMElement
-    {
-        foreach ($row->getElementsByTagName('c') as $cell) {
-            if ($cell->getAttribute('r') === $ref) return $cell;
-        }
-        $cell = $dom->createElement('c');
-        $cell->setAttribute('r', $ref);
-        $row->appendChild($cell);
-        return $cell;
-    }
-
-    private function setNumericCell(\DOMDocument $dom, \DOMElement $row, string $ref, float $value): void
-    {
-        $cell = $this->getOrCreateCell($dom, $row, $ref);
-        $cell->removeAttribute('t');
-        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
-        $v = $dom->createElement('v', (string)$value);
-        $cell->appendChild($v);
-    }
-
-    private function setInlineStringCell(\DOMDocument $dom, \DOMElement $row, string $ref, string $value): void
-    {
-        $cell = $this->getOrCreateCell($dom, $row, $ref);
-        $cell->setAttribute('t', 'inlineStr');
-        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
-        $is = $dom->createElement('is');
-        $t = $dom->createElement('t');
-        $t->appendChild($dom->createTextNode($value));
-        $is->appendChild($t);
-        $cell->appendChild($is);
-    }
-
-    private function clearCell(\DOMDocument $dom, \DOMElement $row, string $ref): void
-    {
-        $cell = $this->getOrCreateCell($dom, $row, $ref);
-        $cell->removeAttribute('t');
-        while ($cell->firstChild) $cell->removeChild($cell->firstChild);
-    }
-
     /**
      * Translate the allocation result into per-bin quantity changes.
      *
@@ -233,14 +124,12 @@ class WmsSheetUpdater
     {
         $deltas = [];
 
-        // Picks: each pick decrements the source bin
         foreach ($allocationResult['picks'] as $pick) {
             $deltas[$pick['location']]['qty_delta'] = ($deltas[$pick['location']]['qty_delta'] ?? 0) - $pick['quantity'];
             $deltas[$pick['location']]['item'] = $pick['item_code'];
             $deltas[$pick['location']]['batch'] = $pick['batch_number'] ?? null;
         }
 
-        // Replenishments: decrement source, increment destination
         foreach ($allocationResult['replenishments'] as $rep) {
             $deltas[$rep['from_location']]['qty_delta'] = ($deltas[$rep['from_location']]['qty_delta'] ?? 0) - $rep['quantity'];
             $deltas[$rep['from_location']]['item'] = $rep['item_code'];
