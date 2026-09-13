@@ -81,6 +81,18 @@ class InboundMergerTest extends TestCase
         return $sheet->getCell($coord)->getValue();
     }
 
+    private function applyMerge(string $wmsPath, string $inboundPath): array
+    {
+        $merger = new InboundMerger();
+        $rawResult = $merger->apply($wmsPath, $inboundPath);
+        $result = json_decode($rawResult, true);
+        $this->assertIsArray($result, 'apply() must return valid JSON');
+        $this->assertArrayHasKey('file', $result, 'Result must contain "file" key');
+        $this->assertArrayHasKey('unmatched', $result, 'Result must contain "unmatched" key');
+        $this->assertFileExists($result['file'], 'Output file must exist');
+        return $result;
+    }
+
     // ── tests ────────────────────────────────────────────────────────
 
     public function testExistingLocationGetsQuantityAdded(): void
@@ -96,22 +108,20 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Qty should be 10 + 44 = 54
-        $this->assertEquals(54.0, $this->readCell($result, 'WMS', 'N5'));
+        $this->assertEquals(54.0, $this->readCell($result['file'], 'WMS', 'N5'));
         // Item should remain unchanged
-        $this->assertEquals('550053783', $this->readCell($result, 'WMS', 'L5'));
+        $this->assertEquals('550053783', $this->readCell($result['file'], 'WMS', 'L5'));
         // Batch updated from inbound
-        $this->assertEquals('B002', $this->readCell($result, 'WMS', 'I5'));
+        $this->assertEquals('B002', $this->readCell($result['file'], 'WMS', 'I5'));
         // Expiry updated from inbound
-        $this->assertEquals('2026-09-03', $this->readCell($result, 'WMS', 'K5'));
+        $this->assertEquals('2026-09-03', $this->readCell($result['file'], 'WMS', 'K5'));
 
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        if (file_exists($result . '.unmatched.json')) unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testConflictingItemGoesToUnmatched(): void
@@ -128,23 +138,19 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Qty should remain unchanged (conflict rejected)
-        $this->assertEquals(10.0, $this->readCell($result, 'WMS', 'N5'));
-        $this->assertEquals('550053783', $this->readCell($result, 'WMS', 'L5'));
+        $this->assertEquals(10.0, $this->readCell($result['file'], 'WMS', 'N5'));
+        $this->assertEquals('550053783', $this->readCell($result['file'], 'WMS', 'L5'));
 
-        // Unmatched file should exist with conflict reason
-        $this->assertFileExists($result . '.unmatched.json');
-        $unmatched = json_decode(file_get_contents($result . '.unmatched.json'), true);
-        $this->assertCount(1, $unmatched);
-        $this->assertStringContainsString('different item', $unmatched[0]['reason']);
+        // Unmatched array should have conflict reason
+        $this->assertCount(1, $result['unmatched']);
+        $this->assertStringContainsString('different item', $result['unmatched'][0]['reason']);
 
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testMissingBinGoesToUnmatched(): void
@@ -161,22 +167,18 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Original row unchanged
-        $this->assertEquals(10.0, $this->readCell($result, 'WMS', 'N5'));
+        $this->assertEquals(10.0, $this->readCell($result['file'], 'WMS', 'N5'));
 
-        // Unmatched file should exist
-        $this->assertFileExists($result . '.unmatched.json');
-        $unmatched = json_decode(file_get_contents($result . '.unmatched.json'), true);
-        $this->assertCount(1, $unmatched);
-        $this->assertStringContainsString('Bin not found', $unmatched[0]['reason']);
+        // Unmatched array should have missing bin reason
+        $this->assertCount(1, $result['unmatched']);
+        $this->assertStringContainsString('Bin not found', $result['unmatched'][0]['reason']);
 
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testByteLevelIntegrityOnlyWmsSheetChanged(): void
@@ -192,33 +194,22 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Verify integrity by checking that only WMS sheet changed
         $origZip = new \ZipArchive();
         $origZip->open($wmsPath);
         $newZip = new \ZipArchive();
-        $newZip->open($result);
+        $newZip->open($result['file']);
 
-        $wmsSheetPath = null;
-        for ($i = 0; $i < $origZip->numFiles; $i++) {
-            $name = $origZip->getNameIndex($i);
-            if (str_contains($name, 'sheet') && str_contains($name, 'xml')) {
-                // This is a simplified check — the actual verifyIntegrity in the class is more thorough
-            }
-        }
+        $this->assertEquals($origZip->numFiles, $newZip->numFiles, 'File count should match');
 
         $origZip->close();
         $newZip->close();
 
-        // If we got here without exception, integrity check passed
-        $this->assertFileExists($result);
-
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        if (file_exists($result . '.unmatched.json')) unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testMultipleReceiptsMergedCorrectly(): void
@@ -236,18 +227,16 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Row 5: 10 + 44 = 54
-        $this->assertEquals(54.0, $this->readCell($result, 'WMS', 'N5'));
+        $this->assertEquals(54.0, $this->readCell($result['file'], 'WMS', 'N5'));
         // Row 6: 20 + 12 = 32
-        $this->assertEquals(32.0, $this->readCell($result, 'WMS', 'N6'));
+        $this->assertEquals(32.0, $this->readCell($result['file'], 'WMS', 'N6'));
 
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        if (file_exists($result . '.unmatched.json')) unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testDateParsingFromInbound(): void
@@ -263,16 +252,14 @@ class InboundMergerTest extends TestCase
         $wmsPath     = $this->saveTemp($wms);
         $inboundPath = $this->saveTemp($inbound);
 
-        $merger = new InboundMerger();
-        $result = $merger->apply($wmsPath, $inboundPath);
+        $result = $this->applyMerge($wmsPath, $inboundPath);
 
         // Date should be parsed to YYYY-MM-DD format
-        $this->assertEquals('2026-09-03', $this->readCell($result, 'WMS', 'K5'));
+        $this->assertEquals('2026-09-03', $this->readCell($result['file'], 'WMS', 'K5'));
 
         unlink($wmsPath);
         unlink($inboundPath);
-        unlink($result);
-        if (file_exists($result . '.unmatched.json')) unlink($result . '.unmatched.json');
+        unlink($result['file']);
     }
 
     public function testMissingWmsSheetThrows(): void

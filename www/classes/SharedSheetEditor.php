@@ -174,6 +174,14 @@ abstract class SharedSheetEditor
     }
 
     /**
+     * Alias for verifyIntegrity — named to match the spec's expected API.
+     */
+    protected function verifyOnlyWmsSheetChanged(string $originalPath, string $outputPath, string $changedSheetPath): void
+    {
+        $this->verifyIntegrity($originalPath, $outputPath, $changedSheetPath);
+    }
+
+    /**
      * Verify that every file in the zip except the one we changed is byte-identical
      * between original and output. Throws on any unexpected modification.
      */
