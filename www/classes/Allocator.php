@@ -248,11 +248,13 @@ class Allocator
                     // triggered for this line, so bin_to_bin stays empty.
                     foreach ($pickfacePicks as &$pick) {
                         $pick['bin_to_bin'] = '';
+                        $pick['qty_moved'] = null;
                         if ($lineReplenishment && $pick['location'] === $lineReplenishment['to_location']) {
                             $sourceLevel = substr($lineReplenishment['from_location'], -2, 1);
                             if ($sourceLevel !== 'A') {
                                 $pick['bin_to_bin'] = $lineReplenishment['from_location'] . ' → ' . $lineReplenishment['to_location'];
                             }
+                            $pick['qty_moved'] = $lineReplenishment['quantity'];
                         }
                     }
                     unset($pick);
