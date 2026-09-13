@@ -596,4 +596,88 @@ class Allocator
     {
         return $this->bulkBins;
     }
+
+    /**
+     * Get pickface status for all items
+     * Returns: item_code => [
+     *   'has_pickface' => bool,
+     *   'pickface_bins' => [...],
+     *   'pickface_qty' => int,
+     *   'bulk_bins' => [...],
+     *   'bulk_qty' => int,
+     *   'upp' => int,
+     *   'uom_type' => string
+     * ]
+     */
+    public function getPickfaceStatus(): array
+    {
+        $status = [];
+
+        // Collect all unique item codes
+        $allItems = array_unique(array_merge(
+            array_keys($this->pickfaceBins),
+            array_keys($this->bulkBins)
+        ));
+
+        foreach ($allItems as $itemCode) {
+            $pickfaceBins = $this->pickfaceBins[$itemCode] ?? [];
+            $bulkBins = $this->bulkBins[$itemCode] ?? [];
+
+            // Calculate pickface stock
+            $pickfaceQty = 0;
+            $pickfaceDetails = [];
+            foreach ($pickfaceBins as $bin) {
+                $stock = $this->stock[$bin] ?? null;
+                $qty = $stock['quantity'] ?? 0;
+                $pickfaceQty += $qty;
+                $pickfaceDetails[] = [
+                    'location' => $bin,
+                    'quantity' => $qty,
+                    'batch_number' => $stock['batch_number'] ?? null,
+                    'expiry_date' => $stock['expiry_date'] ?? null,
+                ];
+            }
+
+            // Calculate bulk stock
+            $bulkQty = 0;
+            $bulkDetails = [];
+            foreach ($bulkBins as $bin) {
+                $stock = $this->stock[$bin] ?? null;
+                $qty = $stock['quantity'] ?? 0;
+                $bulkQty += $qty;
+                $bulkDetails[] = [
+                    'location' => $bin,
+                    'quantity' => $qty,
+                    'batch_number' => $stock['batch_number'] ?? null,
+                    'expiry_date' => $stock['expiry_date'] ?? null,
+                ];
+            }
+
+            $product = $this->products[$itemCode] ?? null;
+
+            $status[$itemCode] = [
+                'item_code' => $itemCode,
+                'has_pickface' => count($pickfaceBins) > 0,
+                'pickface_bins' => $pickfaceDetails,
+                'pickface_count' => count($pickfaceBins),
+                'pickface_qty' => $pickfaceQty,
+                'bulk_bins' => $bulkDetails,
+                'bulk_count' => count($bulkBins),
+                'bulk_qty' => $bulkQty,
+                'upp' => $product['upp'] ?? 0,
+                'uom_type' => $product['uom_type'] ?? 'Unknown',
+                'total_qty' => $pickfaceQty + $bulkQty,
+            ];
+        }
+
+        // Sort: items with pickface first, then by item code
+        uasort($status, function ($a, $b) {
+            if ($a['has_pickface'] !== $b['has_pickface']) {
+                return $a['has_pickface'] ? -1 : 1;
+            }
+            return strcmp($a['item_code'], $b['item_code']);
+        });
+
+        return $status;
+    }
 }

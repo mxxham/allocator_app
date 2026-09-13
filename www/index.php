@@ -368,6 +368,10 @@ session_start();
     <div class="wms-banner" style="margin-bottom:20px">
         <h1><i class="fas fa-magic" style="margin-right:8px"></i>Allocator</h1>
         <p>Generate picklist dari Excel order dengan alokasi FEFO</p>
+        <a href="pickface_status.php" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:0.85rem;font-weight:600;color:var(--wms-primary);text-decoration:none;padding:6px 14px;background:rgba(255,255,255,0.15);border-radius:var(--radius-sm);transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Pickface Status
+        </a>
     </div>
 </div>
 

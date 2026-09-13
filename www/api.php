@@ -28,6 +28,69 @@ try {
 
     switch ($action) {
 
+        // ── Pickface status ──────────────────────────────────────────
+        case 'pickface_status':
+            // Check if file uploaded
+            if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('File tidak diupload atau error upload');
+            }
+
+            $file = $_FILES['excel_file'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+            if (!in_array($ext, ['xlsx', 'xls'])) {
+                throw new Exception('Format file harus .xlsx atau .xls');
+            }
+
+            // Raise memory limit for large files
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(300);
+
+            // Step 1: Parse Excel
+            $parser = new ExcelParser();
+            if (!$parser->load($file['tmp_name'], $file['name'])) {
+                throw new Exception('Gagal membaca file: ' . implode(', ', $parser->getErrors()));
+            }
+
+            // Step 2: Extract data from sheets
+            $putaway = $parser->parsePutaway();
+            $masterSku = $parser->parseMasterSku();
+            $wmsLocations = $parser->parseWmsLocations();
+
+            // Step 3: Initialize allocator
+            $allocator = new Allocator();
+            $allocator->loadProducts($masterSku);
+            $allocator->loadWmsLocations($wmsLocations);
+            $allocator->loadStock($putaway);
+
+            // Step 4: Get pickface status
+            $status = $allocator->getPickfaceStatus();
+
+            // Calculate summary
+            $totalItems = count($status);
+            $withPickface = 0;
+            $withoutPickface = 0;
+            foreach ($status as $item) {
+                if ($item['has_pickface']) {
+                    $withPickface++;
+                } else {
+                    $withoutPickface++;
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Pickface status loaded',
+                'items' => $status,
+                'summary' => [
+                    'total_items' => $totalItems,
+                    'with_pickface' => $withPickface,
+                    'without_pickface' => $withoutPickface,
+                ],
+            ]);
+            ob_end_flush();
+            break;
+
         // ── Inbound merge ──────────────────────────────────────────
         case 'merge_inbound':
             // Validate WMS file
