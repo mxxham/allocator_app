@@ -262,6 +262,32 @@ session_start();
             justify-content: center;
         }
 
+        /* Button loading state */
+        .wms-btn.is-loading {
+            pointer-events: none;
+            opacity: 0.75;
+            position: relative;
+        }
+        .wms-btn.is-loading .btn-icon {
+            display: none;
+        }
+        .wms-btn.is-loading::before {
+            content: '';
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: wms-btn-spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+        @keyframes wms-btn-spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* Error grid message */
         .alloc-error-grid {
             grid-column: 1 / -1;
@@ -659,9 +685,18 @@ let mergeResult = null;
 async function startMerge() {
     if (!selectedWmsFile || !selectedInboundFile) return;
 
+    const mergeBtn = document.getElementById('mergeBtn');
+    const mergeBtnText = mergeBtn.innerHTML;
+
+    // Show progress section
     document.getElementById('progressSection').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'none';
-    document.getElementById('mergeBtn').disabled = true;
+    mergeBtn.disabled = true;
+    mergeBtn.classList.add('is-loading');
+    mergeBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Merging...';
+
+    // Scroll progress into view
+    document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     const progressBar = document.getElementById('progressBar');
     const progressWrap = progressBar.parentElement;
@@ -684,7 +719,14 @@ async function startMerge() {
 
         progressBar.style.width = '100%';
         progressWrap.setAttribute('aria-valuenow', '100');
+        document.getElementById('progressText').textContent = 'Selesai!';
         document.getElementById('progressSection').style.display = 'none';
+
+        // Reset button
+        mergeBtn.classList.remove('is-loading');
+        mergeBtn.innerHTML = mergeBtnText;
+        mergeBtn.disabled = false;
+
         document.getElementById('resultsSection').style.display = 'block';
 
         if (data.success) {
@@ -723,7 +765,9 @@ async function startMerge() {
         }
     } catch (err) {
         document.getElementById('progressSection').style.display = 'none';
-        document.getElementById('mergeBtn').disabled = false;
+        mergeBtn.classList.remove('is-loading');
+        mergeBtn.innerHTML = mergeBtnText;
+        mergeBtn.disabled = false;
         alert('Error: ' + err.message);
     }
 }
@@ -763,9 +807,18 @@ function clearFile() {
 async function startAllocation() {
   if (!selectedFile) return;
 
+  const importBtn = document.getElementById('importBtn');
+  const importBtnText = importBtn.innerHTML;
+
   document.getElementById('progressSection').style.display = 'block';
   document.getElementById('resultsSection').style.display = 'none';
-  document.getElementById('importBtn').disabled = true;
+  importBtn.disabled = true;
+  importBtn.classList.add('is-loading');
+  importBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Generating...';
+
+  // Scroll progress into view
+  document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
   const progressBar = document.getElementById('progressBar');
   const progressWrap = progressBar.parentElement;
   progressBar.style.width = '20%';
@@ -785,7 +838,14 @@ async function startAllocation() {
 
     progressBar.style.width = '100%';
     progressWrap.setAttribute('aria-valuenow', '100');
+    document.getElementById('progressText').textContent = 'Selesai!';
     document.getElementById('progressSection').style.display = 'none';
+
+    // Reset button
+    importBtn.classList.remove('is-loading');
+    importBtn.innerHTML = importBtnText;
+    importBtn.disabled = false;
+
     document.getElementById('resultsSection').style.display = 'block';
 
     if (data.success) {
@@ -824,6 +884,9 @@ async function startAllocation() {
     }
   } catch (err) {
     document.getElementById('progressSection').style.display = 'none';
+    importBtn.classList.remove('is-loading');
+    importBtn.innerHTML = importBtnText;
+    importBtn.disabled = false;
     alert('Error: ' + err.message);
   }
 }

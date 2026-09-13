@@ -53,7 +53,7 @@ class ExcelParser
                 $rows = [];
                 foreach ($sheet->getRowIterator() as $row) {
                     $cellIterator = $row->getCellIterator();
-                    $cellIterator->setIterateOnlyExistingCells(false);
+                    $cellIterator->setIterateOnlyExistingCells(true);
                     $rowData = [];
                     foreach ($cellIterator as $cell) {
                         $val = $cell->getValue();
