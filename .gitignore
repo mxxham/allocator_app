@@ -1,0 +1,15 @@
+/vendor/
+/tools/
+composer.lock
+*.log
+/allocator_*.json
+
+# Build output
+/wrapper/AllocatorDesktop/bin/
+/wrapper/AllocatorDesktop/obj/
+/dist/
+/.omo/
+/.playwright-mcp/
+
+# Runtime vendor (installed by composer in www/)
+/www/vendor/
