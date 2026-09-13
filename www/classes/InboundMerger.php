@@ -10,9 +10,9 @@ class InboundMerger extends SharedSheetEditor
      * same ZIP-level XML editing as WmsSheetUpdater for the WMS sheet —
      * every other sheet in the workbook is provably untouched.
      */
-    public function apply(string $wmsFilePath, string $inboundFilePath): string
+    public function apply(string $wmsFilePath, string $inboundFilePath, ?string $inboundOriginalName = null): string
     {
-        $receipts = $this->parseInboundReceipts($inboundFilePath);
+        $receipts = $this->parseInboundReceipts($inboundFilePath, $inboundOriginalName);
 
         $outPath = tempnam(sys_get_temp_dir(), 'wms_inbound_') . '.xlsx';
         copy($wmsFilePath, $outPath);
@@ -39,10 +39,10 @@ class InboundMerger extends SharedSheetEditor
         return json_encode(['file' => $outPath, 'unmatched' => $unmatched], JSON_THROW_ON_ERROR);
     }
 
-    private function parseInboundReceipts(string $inboundFilePath): array
+    private function parseInboundReceipts(string $inboundFilePath, ?string $inboundOriginalName = null): array
     {
         $parser = new ExcelParser();
-        if (!$parser->load($inboundFilePath)) {
+        if (!$parser->load($inboundFilePath, $inboundOriginalName)) {
             throw new \RuntimeException('Could not load inbound file: ' . implode('; ', $parser->getErrors()));
         }
         $rows = $parser->parsePutaway(); // [location, item_code, quantity, batch_number, expiry_date]

@@ -118,14 +118,29 @@ try {
             @set_time_limit(300);
 
             $merger = new InboundMerger();
-            $rawResult = $merger->apply($wmsFile['tmp_name'], $inboundFile['tmp_name']);
+            $rawResult = $merger->apply($wmsFile['tmp_name'], $inboundFile['tmp_name'], $inboundFile['name']);
             $result = json_decode($rawResult, true);
 
+            $unmatched = $result['unmatched'] ?? [];
+            $unmatchedCount = count($unmatched);
+
+            // Compute stats — matched = receipts that were merged into WMS
+            $parser = new ExcelParser();
+            $parser->load($inboundFile['tmp_name'], $inboundFile['name']);
+            $receiptCount = count($parser->parsePutaway());
+            $matchedCount = $receiptCount - $unmatchedCount;
+
             echo json_encode([
-                'success'      => true,
-                'message'      => 'Inbound merge selesai',
-                'merged_file'  => $result['file'],
-                'unmatched'    => $result['unmatched'],
+                'success'       => true,
+                'message'       => 'Inbound merge selesai',
+                'merged_file'   => $result['file'],
+                'unmatched'     => $unmatched,
+                'unmatched_items' => array_map(fn($u) => "{$u['location']} — {$u['reason']}", $unmatched),
+                'summary' => [
+                    'merged'    => $matchedCount,
+                    'matched'   => $matchedCount,
+                    'unmatched' => $unmatchedCount,
+                ],
             ]);
             ob_end_flush();
             break;
