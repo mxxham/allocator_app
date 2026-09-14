@@ -88,6 +88,7 @@ session_start();
         .pf-actions .wms-btn { flex: 1; min-width: 140px; justify-content: center; }
         .pf-row-no { color: var(--wms-gray-400); font-size: 0.8rem; font-weight: 500; }
         .pf-item-code { font-weight: 600; color: var(--wms-heading); }
+.pf-locs { font-size: 0.75rem; color: var(--wms-gray-600); max-width: 220px; word-wrap: break-word; line-height: 1.4; }
         @keyframes pf-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -198,10 +199,10 @@ session_start();
                             <th>Item Code</th>
                             <th class="tc">UOM</th>
                             <th class="tc">UPP</th>
-                            <th class="tc">Status</th>
-                            <th class="tc">Pickface Bins</th>
+                            <th>Status</th>
+                            <th>Pickface Locations</th>
                             <th>Pickface Qty</th>
-                            <th class="tc">Bulk Bins</th>
+                            <th>Bulk Locations</th>
                             <th>Bulk Qty</th>
                             <th class="tr">Total</th>
                         </tr>
@@ -214,9 +215,9 @@ session_start();
                             <td class="tc"></td>
                             <td class="tc"></td>
                             <td class="tc"></td>
-                            <td class="tc" id="footPfBins">0</td>
+                            <td class="tc" id="footPfBins">0 locs</td>
                             <td class="tr" id="footPfQty">0</td>
-                            <td class="tc" id="footBkBins">0</td>
+                            <td class="tc" id="footBkBins">0 locs</td>
                             <td class="tr" id="footBkQty">0</td>
                             <td class="tr" id="footTotal">0</td>
                         </tr>
@@ -466,9 +467,9 @@ function renderTable(items) {
             '<td class="tc">' + escHtml(uom) + '</td>' +
             '<td class="tc">' + escHtml(String(upp)) + '</td>' +
             '<td class="tc">' + statusBadge + '</td>' +
-            '<td class="tc">' + pfCount + '</td>' +
+            '<td class="pf-locs">' + escHtml((item.pickface_bins || []).map(function(b){return b.location}).join(', ')) + '</td>' +
             '<td><div class="pf-qty-bar-wrap"><div class="pf-qty-bar"><div class="pf-qty-bar-fill pf-bar-pickface" style="width:' + pfBarPct + '%"></div></div><span class="pf-qty-num">' + pfQty + '</span></div></td>' +
-            '<td class="tc">' + bkCount + '</td>' +
+            '<td class="pf-locs">' + escHtml((item.bulk_bins || []).map(function(b){return b.location}).join(', ')) + '</td>' +
             '<td><div class="pf-qty-bar-wrap"><div class="pf-qty-bar"><div class="pf-qty-bar-fill pf-bar-bulk" style="width:' + bkBarPct + '%"></div></div><span class="pf-qty-num">' + bkQty + '</span></div></td>' +
             '<td class="tr"><strong>' + totalQty + '</strong></td>' +
             '</tr>';
@@ -476,9 +477,9 @@ function renderTable(items) {
 
     tbody.innerHTML = html;
 
-    document.getElementById('footPfBins').textContent = sumPfBins;
+    document.getElementById('footPfBins').textContent = sumPfBins + ' locs';
     document.getElementById('footPfQty').textContent = sumPfQty;
-    document.getElementById('footBkBins').textContent = sumBkBins;
+    document.getElementById('footBkBins').textContent = sumBkBins + ' locs';
     document.getElementById('footBkQty').textContent = sumBkQty;
     document.getElementById('footTotal').textContent = sumTotal;
 }
