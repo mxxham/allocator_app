@@ -346,7 +346,7 @@ function renderResults(data) {
             allItems.push(items[code]);
         }
     }
-    allItems.sort(function(a, b) { return a.item_code.localeCompare(b.item_code); });
+    allItems.sort(function(a, b) { return String(a.item_code).localeCompare(String(b.item_code)); });
 
     var total = summary.total_items || allItems.length;
     var withPf = summary.with_pickface || 0;
@@ -402,7 +402,7 @@ function applyFilters() {
         var matchFilter = true;
         if (currentFilter === 'yes') matchFilter = item.has_pickface === true;
         else if (currentFilter === 'no') matchFilter = item.has_pickface === false;
-        var matchSearch = !search || item.item_code.toLowerCase().indexOf(search) !== -1;
+        var matchSearch = !search || String(item.item_code).toLowerCase().indexOf(search) !== -1;
         return matchFilter && matchSearch;
     });
 
@@ -462,7 +462,7 @@ function renderTable(items) {
 
         html += '<tr' + rowClass + '>' +
             '<td class="tc pf-row-no">' + (i + 1) + '</td>' +
-            '<td class="pf-item-code">' + escHtml(item.item_code) + '</td>' +
+            '<td class="pf-item-code">' + escHtml(String(item.item_code)) + '</td>' +
             '<td class="tc">' + escHtml(uom) + '</td>' +
             '<td class="tc">' + escHtml(String(upp)) + '</td>' +
             '<td class="tc">' + statusBadge + '</td>' +
