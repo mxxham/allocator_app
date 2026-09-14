@@ -83,12 +83,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
-@page{counter-increment:page;size:portrait;margin-bottom:28px}
-@media print{
-  html{counter-reset:page}
-  .page-footer-print{display:block!important;position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:9px;color:#64748b;padding:6px 16px;border-top:1px solid #e2e8f0;background:#fff;z-index:999}
-  .page-footer-print .pg-current::after{content:counter(page)}
-}
 .page-footer-print{display:none}
 
 .order-group{margin-bottom:16px;page-break-after:always}
@@ -246,6 +240,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       <?php endforeach; ?>
       </tbody>
     </table>
+    <div style="text-align:center;font-size:8px;color:#94a3b8;padding-top:6px;border-top:1px solid #e2e8f0;margin-top:4px">K-one Allocator — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
   </div>
   <?php endforeach; ?>
   
@@ -331,14 +326,8 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 </div>
 
-<div class="page-footer-print">K-one Allocator — Page <span class="pg-current"></span> of <span id="pgTotal"></span> — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
-
 <script>
 window.onload = function() {
-  // estimate total pages: order groups (each gets its own page) + 1 for summary/notes/replenishments
-  var groups = document.querySelectorAll('.order-group');
-  var total = groups.length + 1;
-  document.getElementById('pgTotal').textContent = total;
   setTimeout(function() { window.print(); }, 500);
 };
 </script>
