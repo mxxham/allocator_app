@@ -176,7 +176,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
           <span style="font-weight:400;font-size:13px;color:#94a3b8;margin-left:4px">(<?= htmlspecialchars($destLoc) ?>)</span>
         <?php endif; ?>
       </div>
-      <span class="badge"><?= count($orderPicks) ?> items <span class="pg-header-label"></span></span>
+      <span class="badge"><?= count($orderPicks) ?> items</span>
     </div>
     <table>
       <thead>
@@ -194,6 +194,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         </tr>
       </thead>
       <tbody>
+      <tr class="page-banner"><td colspan="10" style="background:#013d3c;color:#fff;text-align:center;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.5px;border:none"><span class="pg-banner-text"></span></td></tr>
       <?php foreach ($orderPicks as $idx => $pick): ?>
       <tr>
         <td class="c" style="color:#94a3b8;font-size:13px"><?= $idx + 1 ?></td>
@@ -246,7 +247,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         </tr>
         <tr>
           <td colspan="10" class="order-footer-info" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?> — <span class="pg-footer-total"></span>
+            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?>
           </td>
         </tr>
       </tfoot>
@@ -335,20 +336,55 @@ window.onload = function() {
     var group = groups[g];
     var table = group.querySelector('table');
     if (!table) continue;
+    var tbody = table.querySelector('tbody');
+    if (!tbody) continue;
+    var rows = tbody.querySelectorAll('tr:not(.page-banner)');
+    if (rows.length === 0) continue;
 
     var totalH = group.offsetHeight;
     var totalPages = Math.max(1, Math.ceil(totalH / USABLE_HEIGHT));
 
-    // Header label (only visible on page 1)
-    var headerLabel = group.querySelector('.pg-header-label');
-    if (headerLabel) {
-      headerLabel.textContent = totalPages > 1 ? '(Page 1 of ' + totalPages + ')' : '(1 of 1)';
+    // Fill page 1 banner (first row in tbody)
+    var banner = tbody.querySelector('.page-banner .pg-banner-text');
+    if (banner) {
+      banner.textContent = 'Page 1 of ' + totalPages;
     }
 
-    // Footer total (repeats on every page of this order)
-    var footerTotal = group.querySelector('.pg-footer-total');
-    if (footerTotal) {
-      footerTotal.textContent = totalPages > 1 ? totalPages + ' pages total' : '';
+    // Single page — done
+    if (totalPages <= 1) continue;
+
+    // Calculate rows per page
+    var thead = table.querySelector('thead');
+    var orderHeader = group.querySelector('.order-header');
+    var tfoot = table.querySelector('tfoot');
+    var headerH = (orderHeader ? orderHeader.offsetHeight : 0) + (thead ? thead.offsetHeight : 0);
+    var footerH = tfoot ? tfoot.offsetHeight : 0;
+    var availableForRows = USABLE_HEIGHT - headerH - footerH;
+    var sampleRow = rows[0];
+    var rowH = sampleRow ? sampleRow.offsetHeight : 28;
+    var rowsPerPage = Math.max(1, Math.floor(availableForRows / rowH));
+
+    // Get order name
+    var orderName = '';
+    var firstSpan = group.querySelector('.order-header span');
+    if (firstSpan) orderName = firstSpan.textContent.trim();
+
+    // Inject page banner rows for page 2, 3, etc.
+    var inserted = 0;
+    for (var p = 1; p < totalPages; p++) {
+      var insertAfter = (p * rowsPerPage) + inserted;
+      if (insertAfter >= rows.length) insertAfter = rows.length - 1;
+
+      var marker = document.createElement('tr');
+      marker.className = 'page-banner';
+      marker.innerHTML = '<td colspan="10" style="page-break-before:always;background:#013d3c;color:#fff;text-align:center;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.5px;border:none">Page ' + (p + 1) + ' of ' + totalPages + '</td>';
+
+      if (insertAfter < rows.length) {
+        tbody.insertBefore(marker, rows[insertAfter]);
+      } else {
+        tbody.appendChild(marker);
+      }
+      inserted++;
     }
   }
 
