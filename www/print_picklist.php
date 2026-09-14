@@ -346,7 +346,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   <div class="doc-footer">
     <span>K-one Allocator</span>
     <span>Dicetak: <?= date('d F Y H:i') ?> WIB</span>
-    <span><?= $totalPicks ?> picks / <?= $totalReplenishments ?> replenishments</span>
+    <span><?= number_format($totalQty) ?> total qty / <?= $totalPicks ?> picks / <?= $totalReplenishments ?> replenishments</span>
   </div>
 
 </div>
