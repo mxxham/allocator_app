@@ -86,7 +86,7 @@ class PicklistGenerator
         $sheet->setTitle('Picks');
 
         // Headers
-        $headers = ['Order No', 'Item Code', 'Location', 'Quantity', 'Type', 'Bin to Bin', 'Qty Moved', 'Batch', 'Expiry Date'];
+        $headers = ['Order No', 'Shipment No', 'Item Code', 'Location', 'Quantity', 'Type', 'Bin to Bin', 'Qty Moved', 'Batch', 'Expiry Date'];
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
             $sheet->setCellValue("{$colLetter}1", $header);
@@ -97,19 +97,20 @@ class PicklistGenerator
         $row = 2;
         foreach ($picks as $pick) {
             $sheet->setCellValue("A{$row}", $pick['order_no']);
-            $sheet->setCellValue("B{$row}", $pick['item_code']);
-            $sheet->setCellValue("C{$row}", $pick['location']);
-            $sheet->setCellValue("D{$row}", $pick['quantity']);
-            $sheet->setCellValue("E{$row}", $pick['type']);
-            $sheet->setCellValue("F{$row}", $pick['bin_to_bin'] ?? '');
-            $sheet->setCellValue("G{$row}", $pick['qty_moved'] ?? '');
-            $sheet->setCellValue("H{$row}", $pick['batch_number'] ?? '');
-            $sheet->setCellValue("I{$row}", $pick['expiry_date'] ?? '');
+            $sheet->setCellValue("B{$row}", $pick['shipment_no'] ?? '');
+            $sheet->setCellValue("C{$row}", $pick['item_code']);
+            $sheet->setCellValue("D{$row}", $pick['location']);
+            $sheet->setCellValue("E{$row}", $pick['quantity']);
+            $sheet->setCellValue("F{$row}", $pick['type']);
+            $sheet->setCellValue("G{$row}", $pick['bin_to_bin'] ?? '');
+            $sheet->setCellValue("H{$row}", $pick['qty_moved'] ?? '');
+            $sheet->setCellValue("I{$row}", $pick['batch_number'] ?? '');
+            $sheet->setCellValue("J{$row}", $pick['expiry_date'] ?? '');
             $row++;
         }
 
         // Auto-width
-        foreach (range('A', 'I') as $col) {
+        foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }

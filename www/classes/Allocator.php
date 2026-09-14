@@ -173,7 +173,7 @@ class Allocator
 
         // Group by order (for allocation logic — each delivery doc is a picking unit)
         $orders = [];
-        $orderMeta = []; // order_no → no, destination, ship_to_location
+        $orderMeta = []; // order_no → no, destination, ship_to_location, shipment_no
         foreach ($orderLines as $line) {
             $orders[$line['order_no']][] = $line;
             if (!isset($orderMeta[$line['order_no']])) {
@@ -181,6 +181,7 @@ class Allocator
                     'no' => $line['no'] ?? '',
                     'destination' => $line['destination'] ?? '',
                     'ship_to_location' => $line['ship_to_location'] ?? '',
+                    'shipment_no' => $line['shipment_no'] ?? '',
                 ];
             }
         }
@@ -286,6 +287,7 @@ class Allocator
             $pick['no'] = $meta['no'] ?? '';
             $pick['destination'] = $meta['destination'] ?? '';
             $pick['ship_to_location'] = $meta['ship_to_location'] ?? '';
+            $pick['shipment_no'] = $meta['shipment_no'] ?? '';
         }
         unset($pick);
 

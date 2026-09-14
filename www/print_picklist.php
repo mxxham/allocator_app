@@ -159,6 +159,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
     $firstPick = $orderPicks[0] ?? [];
     $dest = $firstPick['destination'] ?? '';
     $destLoc = $firstPick['ship_to_location'] ?? '';
+    $shipmentNo = $firstPick['shipment_no'] ?? '';
   ?>
   <div class="order-group">
     <table>
@@ -166,6 +167,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         <tr>
           <th colspan="10" style="background:#e6f7f7;color:#013d3c;text-align:left;padding:6px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">
             <span>Order: <?= htmlspecialchars($no) ?></span>
+            <?php if ($shipmentNo): ?>
+              <span style="font-weight:400;font-size:13px;color:#64748b;margin-left:8px">Shipment: <?= htmlspecialchars($shipmentNo) ?></span>
+            <?php endif; ?>
             <?php if ($dest): ?>
               <span style="font-weight:400;font-size:13px;color:#64748b;margin-left:8px"><?= htmlspecialchars($dest) ?></span>
             <?php endif; ?>
