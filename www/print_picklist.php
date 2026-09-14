@@ -330,14 +330,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 </div>
 
-<div class="page-footer-print">K-one Allocator — Page <span class="pf-page-num"></span> of <span class="pf-page-total"></span> — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
-
-<style>
-@media print{
-  .pf-page-num::after{content:counter(page)}
-  .pf-page-total::after{content:counter(pages)}
-}
-</style>
+<div class="page-footer-print">K-one Allocator — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
 
 <script>
 window.onload = function() {
