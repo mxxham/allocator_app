@@ -239,8 +239,12 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tr>
       <?php endforeach; ?>
       </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="10" class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — K-one Allocator — <?= date('d/m/Y H:i') ?></td>
+        </tr>
+      </tfoot>
     </table>
-    <div class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;padding-top:6px;border-top:1px solid #e2e8f0;margin-top:4px">K-one Allocator — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders — Page <span class="pg-num"></span></div>
   </div>
   <?php endforeach; ?>
   
@@ -328,10 +332,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 <script>
 window.onload = function() {
-  var footers = document.querySelectorAll('.pg-num');
-  for (var i = 0; i < footers.length; i++) {
-    footers[i].textContent = (i + 1) + ' of ' + footers.length;
-  }
   setTimeout(function() { window.print(); }, 500);
 };
 </script>
