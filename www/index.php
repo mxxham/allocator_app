@@ -1192,7 +1192,7 @@ async function applyDecisions() {
 
       // Setup download button for final WMS
       var dlBtn = document.getElementById('downloadBtn');
-      dlBtn.href = 'download.php?file=' + encodeURIComponent(data.final_wms_file) + '&filename=final_wms_updated';
+      dlBtn.href = 'preview_wms_changes.php?id=' + allocationData.result_id;
       dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
       var txtNode = dlBtn.childNodes[2];
       if (txtNode) txtNode.textContent = ' Download Final WMS';

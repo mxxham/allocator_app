@@ -343,6 +343,12 @@ try {
                 elseif ($d === 'cancel') $cancelled++;
             }
 
+            // Persist decisions + final WMS path into result JSON
+            // (so preview_wms_changes.php can read them)
+            $allocationResult['decisions'] = $decisions;
+            $allocationResult['final_wms_file'] = $finalWmsFile;
+            file_put_contents($resultFile, json_encode($allocationResult, JSON_PRETTY_PRINT));
+
             $response = [
                 'success' => true,
                 'message' => "{$confirmed} confirmed, {$staged} staged, {$cancelled} cancelled",
