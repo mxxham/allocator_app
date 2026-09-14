@@ -238,7 +238,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tr>
       <?php endforeach; ?>
       </tbody>
-      <tfoot>
+      <tfoot class="order-tfoot">
         <tr>
           <td colspan="4" style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9">TOTAL QTY — Order <?= htmlspecialchars($no) ?></td>
           <td style="padding:8px 10px;font-size:13px;font-weight:800;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9;text-align:right"><?= number_format((float)$orderQty, 0) ?></td>
@@ -328,61 +328,78 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 <script>
 window.onload = function() {
   /*
-   * UNIVERSAL PAGE NUMBERING — pure JS, no CSS counters
+   * PER-ORDER PAGE NUMBERING — pure JS, no CSS counters
    * 
-   * How it works:
-   * 1. Each .order-group has page-break-after:always (starts on fresh page)
-   * 2. We measure each order group's actual rendered height
-   * 3. We measure a single-row height from the first table to calibrate
-   * 4. We estimate available print page height from window vs screen ratio
-   * 5. Calculate pages per order, then cumulative global page numbers
-   * 6. Inject into each order's .pg-label span BEFORE print dialog
+   * Strategy: insert page-break marker rows inside each table to split
+   * multi-page orders into separate visible pages, each with correct numbering.
+   * Single-page orders stay untouched.
    */
 
-  // 1. Get all order groups
+  var USABLE_HEIGHT = 920;
   var groups = document.querySelectorAll('.order-group');
   if (groups.length === 0) { window.print(); return; }
 
-  // 2. Measure actual print page height
-  // In print, the viewport is the paper. We estimate from CSS print padding.
-  // A4 height = 297mm. With 12mm top + 12mm bottom padding = 273mm usable.
-  // 1mm ≈ 3.78px, so ~1032px usable. But headers/footers eat some.
-  // Conservative estimate: ~920px usable for table content per page.
-  var USABLE_HEIGHT = 920;
+  // Process each order group
+  for (var g = 0; g < groups.length; g++) {
+    var group = groups[g];
+    var table = group.querySelector('table');
+    if (!table) continue;
 
-  // 3. Calculate pages per order group by measuring actual DOM height
-  var globalPage = 1;
-  var totalPages = 0;
-  var orderPages = [];
+    var tbody = table.querySelector('tbody');
+    if (!tbody) continue;
+    var rows = tbody.querySelectorAll('tr');
+    if (rows.length === 0) continue;
 
-  for (var i = 0; i < groups.length; i++) {
-    var h = groups[i].offsetHeight;
-    var pages = Math.max(1, Math.ceil(h / USABLE_HEIGHT));
-    orderPages.push({ pages: pages, startPage: 0 });
-    totalPages += pages;
-  }
+    // Measure total height
+    var totalH = group.offsetHeight;
+    var totalPages = Math.max(1, Math.ceil(totalH / USABLE_HEIGHT));
 
-  // 4. Calculate start page for each order
-  var running = 1;
-  for (var i = 0; i < orderPages.length; i++) {
-    orderPages[i].startPage = running;
-    running += orderPages[i].pages;
-  }
+    // Update footer label
+    var labels = group.querySelectorAll('.pg-label');
+    for (var l = 0; l < labels.length; l++) {
+      labels[l].textContent = totalPages > 1 ? totalPages + ' pages' : '1 of 1';
+    }
 
-  // 5. Inject page labels into each order's footer
-  for (var i = 0; i < groups.length; i++) {
-    var labels = groups[i].querySelectorAll('.pg-label');
-    var info = orderPages[i];
-    for (var j = 0; j < labels.length; j++) {
-      if (info.pages > 1) {
-        labels[j].textContent = 'Page ' + info.startPage + '-' + (info.startPage + info.pages - 1) + ' of ' + totalPages;
+    // If only 1 page, no markers needed
+    if (totalPages <= 1) continue;
+
+    // Calculate rows per page: measure header height, then divide remaining space
+    var thead = table.querySelector('thead');
+    var orderHeader = group.querySelector('.order-header');
+    var tfoot = table.querySelector('tfoot');
+
+    var headerH = (orderHeader ? orderHeader.offsetHeight : 0) + (thead ? thead.offsetHeight : 0);
+    var footerH = tfoot ? tfoot.offsetHeight : 0;
+    var availableForRows = USABLE_HEIGHT - headerH - footerH;
+
+    // Measure a single row height
+    var sampleRow = rows[0];
+    var rowH = sampleRow ? sampleRow.offsetHeight : 28;
+    var rowsPerPage = Math.max(1, Math.floor(availableForRows / rowH));
+
+    // Insert page-break marker rows after the calculated row positions
+    var inserted = 0;
+    for (var p = 1; p < totalPages; p++) {
+      var insertAfter = (p * rowsPerPage) + inserted;
+      if (insertAfter >= rows.length) break;
+
+      var marker = document.createElement('tr');
+      marker.className = 'page-break-marker';
+      marker.innerHTML = '<td colspan="10" style="page-break-before:always;padding:6px 10px;text-align:center;font-size:8px;color:#94a3b8;background:#f8fafc;border-top:1px solid #e2e8f0">Order: ' +
+        group.querySelector('.order-header span').textContent.replace(/Order:\s*/, '').trim() +
+        ' — Page ' + (p + 1) + ' of ' + totalPages +
+        ' — K-one Allocator — <?= date("d/m/Y H:i") ?></td>';
+
+      // Insert before the target row
+      if (insertAfter < rows.length) {
+        tbody.insertBefore(marker, rows[insertAfter]);
       } else {
-        labels[j].textContent = 'Page ' + info.startPage + ' of ' + totalPages;
+        tbody.appendChild(marker);
       }
+      inserted++;
     }
   }
 
-  // 6. Print
   setTimeout(function() { window.print(); }, 300);
 };
 </script>
