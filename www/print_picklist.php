@@ -177,7 +177,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
             <?php if ($destLoc): ?>
               <span style="font-weight:400;font-size:13px;color:#94a3b8;margin-left:4px">(<?= htmlspecialchars($destLoc) ?>)</span>
             <?php endif; ?>
-            <span style="float:right;background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;text-transform:none;letter-spacing:0"><?= count($orderPicks) ?> items</span>
+            <span style="float:right;background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;text-transform:none;letter-spacing:0"><?= count($orderPicks) ?> items <span class="pg-header-label"></span></span>
           </th>
         </tr>
         <tr>
@@ -246,7 +246,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         </tr>
         <tr>
           <td colspan="10" class="order-footer-info" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?> — <span class="pg-label"></span>
+            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?>
           </td>
         </tr>
       </tfoot>
@@ -327,70 +327,59 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 <script>
 window.onload = function() {
-  /*
-   * PER-ORDER PAGE NUMBERING — pure JS, no CSS counters
-   * 
-   * Strategy: insert page-break marker rows inside each table to split
-   * multi-page orders into separate visible pages, each with correct numbering.
-   * Single-page orders stay untouched.
-   */
-
   var USABLE_HEIGHT = 920;
   var groups = document.querySelectorAll('.order-group');
   if (groups.length === 0) { window.print(); return; }
 
-  // Process each order group
   for (var g = 0; g < groups.length; g++) {
     var group = groups[g];
     var table = group.querySelector('table');
     if (!table) continue;
-
     var tbody = table.querySelector('tbody');
     if (!tbody) continue;
     var rows = tbody.querySelectorAll('tr');
     if (rows.length === 0) continue;
 
-    // Measure total height
     var totalH = group.offsetHeight;
     var totalPages = Math.max(1, Math.ceil(totalH / USABLE_HEIGHT));
 
-    // Update footer label
-    var labels = group.querySelectorAll('.pg-label');
-    for (var l = 0; l < labels.length; l++) {
-      labels[l].textContent = totalPages > 1 ? totalPages + ' pages' : '1 of 1';
+    // Page 1: fill the order header badge label
+    var headerLabel = group.querySelector('.pg-header-label');
+    if (headerLabel) {
+      headerLabel.textContent = totalPages > 1 ? '(Page 1 of ' + totalPages + ')' : '(1 of 1)';
     }
 
-    // If only 1 page, no markers needed
+    // Single page — done
     if (totalPages <= 1) continue;
 
-    // Calculate rows per page: measure header height, then divide remaining space
+    // Calculate rows per page
     var thead = table.querySelector('thead');
     var orderHeader = group.querySelector('.order-header');
     var tfoot = table.querySelector('tfoot');
-
     var headerH = (orderHeader ? orderHeader.offsetHeight : 0) + (thead ? thead.offsetHeight : 0);
     var footerH = tfoot ? tfoot.offsetHeight : 0;
     var availableForRows = USABLE_HEIGHT - headerH - footerH;
-
-    // Measure a single row height
     var sampleRow = rows[0];
     var rowH = sampleRow ? sampleRow.offsetHeight : 28;
     var rowsPerPage = Math.max(1, Math.floor(availableForRows / rowH));
 
-    // Insert page-break marker rows after the calculated row positions
+    // Get order name for markers
+    var orderName = '';
+    var firstSpan = group.querySelector('.order-header span');
+    if (firstSpan) orderName = firstSpan.textContent.trim();
+
+    // Inject page-break marker rows for page 2, 3, etc.
     var inserted = 0;
     for (var p = 1; p < totalPages; p++) {
       var insertAfter = (p * rowsPerPage) + inserted;
-      if (insertAfter >= rows.length) break;
+      if (insertAfter >= rows.length) insertAfter = rows.length - 1;
 
       var marker = document.createElement('tr');
       marker.className = 'page-break-marker';
-      marker.innerHTML = '<td colspan="10" style="page-break-before:always;padding:6px 10px;text-align:center;font-size:8px;color:#94a3b8;background:#f8fafc;border-top:1px solid #e2e8f0">Order: ' +
-        group.querySelector('.order-header span').textContent.replace(/Order:\s*/, '').trim() +
-        ' — Page ' + (p + 1) + ' of ' + totalPages +
+      marker.innerHTML = '<td colspan="10" style="page-break-before:always;padding:6px 10px;text-align:center;font-size:8px;color:#94a3b8;background:#f8fafc;border-top:1px solid #e2e8f0">' +
+        orderName + ' — Page ' + (p + 1) + ' of ' + totalPages +
         ' — K-one Allocator — <?= date("d/m/Y H:i") ?></td>';
 
-      // Insert before the target row
       if (insertAfter < rows.length) {
         tbody.insertBefore(marker, rows[insertAfter]);
       } else {
