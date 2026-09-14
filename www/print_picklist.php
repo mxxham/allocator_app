@@ -49,8 +49,8 @@ foreach ($picks as $pick) {
 <title>Pick List — Allocator <?= date('d/m/Y') ?></title>
 <link rel="stylesheet" href="assets/css/print-shared.css">
 <style>
-.picklist-specific .document{padding:12mm 14mm}
-@media print{.picklist-specific .document{padding:12mm 14mm}}
+.picklist-specific .document{width:182mm;max-width:182mm;padding:12mm 14mm;margin:0 auto;box-sizing:border-box}
+@media print{.picklist-specific .document{width:100%;max-width:none;padding:12mm 14mm}}
 
 .company-name{font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-.5px}
 .company-name span{color:#64748b;font-weight:400}
