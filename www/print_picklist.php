@@ -85,10 +85,16 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .page-footer-print{display:none}
 
+@page{counter-increment:page}
+@media print{
+  html{counter-reset:page}
+  .pg-num::after{content:counter(page)}
+}
+
 .order-group{margin-bottom:16px;page-break-after:always}
 .order-group:last-of-type{page-break-after:auto}
 .order-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
-.order-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px}
+.order-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600}
 
 @media print{#back-to-app{display:none!important}.print-bar{display:none!important}}
 </style>
@@ -245,7 +251,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       <tfoot>
         <tr>
           <td colspan="10" class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — Qty: <?= number_format((float)$orderQty, 0) ?> — K-one Allocator — <?= date('d/m/Y H:i') ?> — Page <span class="order-page"></span>
+            Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — Qty: <?= number_format((float)$orderQty, 0) ?> — K-one Allocator — <?= date('d/m/Y H:i') ?> — Page <span class="pg-num"></span>
           </td>
         </tr>
       </tfoot>
@@ -337,22 +343,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 <script>
 window.onload = function() {
-  // Estimate per-order page counts based on row heights
-  var groups = document.querySelectorAll('.order-group');
-  var PAGE_HEIGHT = 880; // approx usable print height per page in px
-  var ROW_HEIGHT = 28;   // approx height per pick row in px
-  var HEADER_HEIGHT = 80; // table header + order header
-
-  groups.forEach(function(group) {
-    var rows = group.querySelectorAll('tbody tr');
-    var tableHeight = HEADER_HEIGHT + (rows.length * ROW_HEIGHT);
-    var totalPages = Math.max(1, Math.ceil(tableHeight / PAGE_HEIGHT));
-    var spans = group.querySelectorAll('.order-page');
-    spans.forEach(function(span) {
-      span.textContent = '1 of ' + totalPages;
-    });
-  });
-
   setTimeout(function() { window.print(); }, 500);
 };
 </script>
