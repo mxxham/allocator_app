@@ -27,7 +27,8 @@ $createdAt = $result['created_at'] ?? date('Y-m-d H:i:s');
 $totalPicks = count($picks);
 $totalReplenishments = count($replenishments);
 $totalQty = array_sum(array_column($picks, 'quantity'));
-$orderCount = count(array_unique(array_column($picks, 'order_no')));
+// Group by same key as JS: no (from Schedule of the Day col R), fallback to order_no
+$orderCount = count(array_unique(array_map(fn($p) => $p['no'] ?: $p['order_no'], $picks)));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -264,22 +265,27 @@ const TOTAL_ORDERS = <?= $orderCount ?>;
 
 /* ── Render order cards ── */
 function renderOrderCards(picks) {
-    const byOrder = {};
+    // Group by NO (same as print_picklist.php) — not by order_no
+    const byNo = {};
     picks.forEach(p => {
-        const key = p.order_no || 'unknown';
-        if (!byOrder[key]) byOrder[key] = { picks: [], totalQty: 0, items: new Set() };
-        byOrder[key].picks.push(p);
-        byOrder[key].totalQty += parseFloat(p.quantity || 0);
-        byOrder[key].items.add(p.item_code);
+        const key = p.no || p.order_no || 'Unknown';
+        if (!byNo[key]) byNo[key] = { picks: [], totalQty: 0, items: new Set(), shipmentNo: '', destination: '', shipToLocation: '' };
+        byNo[key].picks.push(p);
+        byNo[key].totalQty += parseFloat(p.quantity || 0);
+        byNo[key].items.add(p.item_code);
+        // Grab metadata from first pick
+        if (!byNo[key].shipmentNo) byNo[key].shipmentNo = p.shipment_no || '';
+        if (!byNo[key].destination) byNo[key].destination = p.destination || '';
+        if (!byNo[key].shipToLocation) byNo[key].shipToLocation = p.ship_to_location || '';
     });
 
-    const orderNos = Object.keys(byOrder).sort();
+    const noKeys = Object.keys(byNo).sort();
     orderDecisions = {};
 
     let html = '';
-    orderNos.forEach((orderNo, i) => {
-        const o = byOrder[orderNo];
-        orderDecisions[orderNo] = null;
+    noKeys.forEach((no, i) => {
+        const o = byNo[no];
+        orderDecisions[no] = null;
 
         const pickLines = o.picks.map(p => {
             const batch = p.batch_number ? `<span class="batch">(${p.batch_number})</span>` : '';
@@ -291,16 +297,25 @@ function renderOrderCards(picks) {
             </div>`;
         }).join('');
 
+        // Subtitle: shipment + destination (same as print_picklist order header)
+        const metaParts = [];
+        if (o.shipmentNo) metaParts.push(`Shipment: ${o.shipmentNo}`);
+        if (o.destination) metaParts.push(o.destination);
+        if (o.shipToLocation) metaParts.push(`(${o.shipToLocation})`);
+        const subtitle = metaParts.length > 0
+            ? metaParts.join(' &middot; ')
+            : `${o.items.size} item types &middot; ${o.picks.length} pick lines`;
+
         html += `
-            <div class="order-card" id="card-${orderNo}" style="animation-delay:${i * 0.04}s">
+            <div class="order-card" id="card-${no}" data-no="${no}" style="animation-delay:${i * 0.04}s">
                 <div class="card-top">
                     <div class="card-identity">
                         <div class="card-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                         </div>
                         <div>
-                            <div class="card-title">Order ${orderNo}</div>
-                            <div class="card-subtitle">${o.items.size} item types &middot; ${o.picks.length} pick lines</div>
+                            <div class="card-title">Order ${no}</div>
+                            <div class="card-subtitle">${subtitle}</div>
                         </div>
                     </div>
                     <div class="card-qty">
@@ -310,13 +325,13 @@ function renderOrderCards(picks) {
                 </div>
                 <div class="card-picks">${pickLines}</div>
                 <div class="card-actions">
-                    <button class="dec-btn dec-btn--confirm" onclick="setDecision('${orderNo}','confirm')">
+                    <button class="dec-btn dec-btn--confirm" onclick="setDecision(this.closest('.order-card').dataset.no,'confirm')">
                         <span class="icon">&#10003;</span> Confirm
                     </button>
-                    <button class="dec-btn dec-btn--stage" onclick="setDecision('${orderNo}','stage')">
+                    <button class="dec-btn dec-btn--stage" onclick="setDecision(this.closest('.order-card').dataset.no,'stage')">
                         <span class="icon">&#128230;</span> Stage
                     </button>
-                    <button class="dec-btn dec-btn--cancel" onclick="setDecision('${orderNo}','cancel')">
+                    <button class="dec-btn dec-btn--cancel" onclick="setDecision(this.closest('.order-card').dataset.no,'cancel')">
                         <span class="icon">&#10007;</span> Cancel
                     </button>
                 </div>
