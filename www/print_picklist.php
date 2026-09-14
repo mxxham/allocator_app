@@ -161,18 +161,20 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
     $destLoc = $firstPick['ship_to_location'] ?? '';
   ?>
   <div class="order-group">
-    <div class="order-header">
-      <span>Order: <?= htmlspecialchars($no) ?></span>
-      <?php if ($dest): ?>
-        <span style="font-weight:400;font-size:13px;color:#64748b;margin-left:8px"><?= htmlspecialchars($dest) ?></span>
-      <?php endif; ?>
-      <?php if ($destLoc): ?>
-        <span style="font-weight:400;font-size:13px;color:#94a3b8;margin-left:4px">(<?= htmlspecialchars($destLoc) ?>)</span>
-      <?php endif; ?>
-      <span class="badge"><?= count($orderPicks) ?> items</span>
-    </div>
     <table>
       <thead>
+        <tr>
+          <th colspan="10" style="background:#e6f7f7;color:#013d3c;text-align:left;padding:6px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">
+            <span>Order: <?= htmlspecialchars($no) ?></span>
+            <?php if ($dest): ?>
+              <span style="font-weight:400;font-size:13px;color:#64748b;margin-left:8px"><?= htmlspecialchars($dest) ?></span>
+            <?php endif; ?>
+            <?php if ($destLoc): ?>
+              <span style="font-weight:400;font-size:13px;color:#94a3b8;margin-left:4px">(<?= htmlspecialchars($destLoc) ?>)</span>
+            <?php endif; ?>
+            <span style="float:right;background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;text-transform:none;letter-spacing:0"><?= count($orderPicks) ?> items</span>
+          </th>
+        </tr>
         <tr>
           <th class="c" style="width:24px">No.</th>
           <th>Item Code</th>
