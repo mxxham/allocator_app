@@ -83,6 +83,14 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
+@page{counter-increment:page;size:portrait}
+@media print{
+  body{counter-reset:page}
+  .doc-footer::after{content:"Page " counter(page) " of " counter(pages);position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:9px;color:#64748b;padding:4px 0;border-top:1px solid #e2e8f0;background:#fff}
+}
+.page-footer{display:none}
+@media print{.page-footer{display:block;position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:9px;color:#64748b;padding:4px 0;border-top:1px solid #e2e8f0;background:#fff;z-index:999}}
+
 .order-group{margin-bottom:16px;page-break-after:always}
 .order-group:last-of-type{page-break-after:auto}
 .order-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
@@ -322,6 +330,8 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   </div>
 
 </div>
+
+<div class="page-footer">K-one Allocator — Page <span id="pageNum"></span></div>
 
 <script>
 window.onload = function() {
