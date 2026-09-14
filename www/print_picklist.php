@@ -83,7 +83,8 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
-.order-group{margin-bottom:16px}
+.order-group{margin-bottom:16px;page-break-after:always}
+.order-group:last-of-type{page-break-after:auto}
 .order-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
 .order-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px}
 
@@ -248,9 +249,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
   <!-- Replenishments -->
   <?php if (!empty($replenishments)): ?>
-  <div style="margin-top:20px">
+  <div style="margin-top:20px;page-break-before:always">
     <div class="section-title" style="color:#f59e0b">Replenishment (<?= $totalReplenishments ?> tasks)</div>
-    <table>
+    <table style="page-break-inside:avoid">
       <thead>
         <tr>
           <th class="c" style="width:24px">No.</th>
