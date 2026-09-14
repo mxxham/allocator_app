@@ -263,7 +263,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tr>
       <?php endforeach; ?>
       </tbody>
-      <?php if ($totalPages > 1): ?>
       <tfoot class="order-tfoot">
         <tr>
           <td colspan="4" style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9">TOTAL QTY — Order <?= htmlspecialchars($no) ?></td>
@@ -271,7 +270,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
           <td colspan="5" style="border-top:2px solid #013d3c;background:#f1f5f9"></td>
         </tr>
       </tfoot>
-      <?php endif; ?>
     </table>
 
 
