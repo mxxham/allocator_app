@@ -41,6 +41,18 @@ foreach ($picks as $pick) {
     }
     $groupedPicks[$no][] = $pick;
 }
+
+// --- PHP-side page chunking ---
+// Tune this to match real printed row count per page.
+const ROWS_PER_PAGE = 25;
+
+function chunkOrderIntoPages(array $orderItems, int $rowsPerPage): array
+{
+    return array_chunk($orderItems, $rowsPerPage);
+}
+
+$orderKeys = array_keys($groupedPicks);
+$lastOrderKey = end($orderKeys);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -83,10 +95,17 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
-.order-group{margin-bottom:16px;page-break-after:always}
-.order-group:last-of-type{page-break-after:auto}
-.order-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
-.order-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600}
+/* Print page chunks — each order page is its own div */
+.print-page{page-break-after:always}
+.print-page:last-child{page-break-after:auto}
+
+/* Order header on each page */
+.order-page-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
+.order-page-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600}
+
+/* Page footer banner */
+.page-footer-banner{margin-top:4px;padding:4px 10px;text-align:center;font-size:9px;color:#64748b;border-top:1px solid #e2e8f0;background:#f8fafc}
+.page-footer-banner strong{color:#013d3c}
 
 @media print{#back-to-app{display:none!important}.print-bar{display:none!important}}
 </style>
@@ -149,21 +168,29 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
     </div>
   </div>
 
-  <!-- Picks Table -->
+  <!-- Picks Table — chunked per order -->
   <?php if (!empty($picks)): ?>
   <div class="section-title">Items to Pick (<?= $totalPicks ?> picks)</div>
   
   <?php foreach ($groupedPicks as $no => $orderPicks): ?>
   <?php
-    // Get display info from first pick in this group
     $firstPick = $orderPicks[0] ?? [];
     $dest = $firstPick['destination'] ?? '';
     $destLoc = $firstPick['ship_to_location'] ?? '';
     $shipmentNo = $firstPick['shipment_no'] ?? '';
     $orderQty = array_sum(array_column($orderPicks, 'quantity'));
+
+    // Chunk order items into pages
+    $pages = chunkOrderIntoPages($orderPicks, ROWS_PER_PAGE);
+    $totalPages = count($pages);
+    $isLastOrder = ($no === $lastOrderKey);
   ?>
-  <div class="order-group" data-qty="<?= (int)$orderQty ?>">
-    <div class="order-header">
+
+  <?php foreach ($pages as $pageIndex => $pageRows): ?>
+  <?php $pageNum = $pageIndex + 1; ?>
+  <div class="print-page">
+    <!-- Order header — repeated on each page -->
+    <div class="order-page-header">
       <div>
         <span>Order: <?= htmlspecialchars($no) ?></span>
         <?php if ($shipmentNo): ?>
@@ -176,8 +203,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
           <span style="font-weight:400;font-size:13px;color:#94a3b8;margin-left:4px">(<?= htmlspecialchars($destLoc) ?>)</span>
         <?php endif; ?>
       </div>
-      <span class="badge"><?= count($orderPicks) ?> items <span class="pg-header-label"></span></span>
+      <span class="badge"><?= count($orderPicks) ?> items — Page <?= $pageNum ?> of <?= $totalPages ?></span>
     </div>
+
     <table>
       <thead>
         <tr>
@@ -194,9 +222,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         </tr>
       </thead>
       <tbody>
-      <?php foreach ($orderPicks as $idx => $pick): ?>
+      <?php foreach ($pageRows as $idx => $pick): ?>
       <tr>
-        <td class="c" style="color:#94a3b8;font-size:13px"><?= $idx + 1 ?></td>
+        <td class="c" style="color:#94a3b8;font-size:13px"><?= ($pageIndex * ROWS_PER_PAGE) + $idx + 1 ?></td>
         <td style="font-family:'SF Mono',Consolas,monospace;font-size:13px;font-weight:700;color:#0f172a"><?= htmlspecialchars($pick['item_code'] ?? '—') ?></td>
         <td>
           <?php if ($pick['location'] ?? null): ?>
@@ -238,20 +266,25 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tr>
       <?php endforeach; ?>
       </tbody>
+      <?php if ($totalPages > 1): ?>
       <tfoot class="order-tfoot">
         <tr>
           <td colspan="4" style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9">TOTAL QTY — Order <?= htmlspecialchars($no) ?></td>
           <td style="padding:8px 10px;font-size:13px;font-weight:800;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9;text-align:right"><?= number_format((float)$orderQty, 0) ?></td>
           <td colspan="5" style="border-top:2px solid #013d3c;background:#f1f5f9"></td>
         </tr>
-        <tr>
-          <td colspan="10" class="order-footer-info" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?> — <span class="pg-footer-total"></span>
-          </td>
-        </tr>
       </tfoot>
+      <?php endif; ?>
     </table>
+
+    <!-- Page footer banner -->
+    <div class="page-footer-banner">
+      <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>
+      <strong>Page <?= $pageNum ?> of <?= $totalPages ?></strong> — K-one Allocator — <?= date('d/m/Y H:i') ?>
+    </div>
   </div>
+  <?php endforeach; ?>
+
   <?php endforeach; ?>
   <?php endif; ?>
 
@@ -325,35 +358,5 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 </div>
 
-<script>
-window.onload = function() {
-  var USABLE_HEIGHT = 780;
-  var groups = document.querySelectorAll('.order-group');
-  if (groups.length === 0) { window.print(); return; }
-
-  for (var g = 0; g < groups.length; g++) {
-    var group = groups[g];
-    var table = group.querySelector('table');
-    if (!table) continue;
-
-    var totalH = group.offsetHeight;
-    var totalPages = Math.max(1, Math.ceil(totalH / USABLE_HEIGHT));
-
-    // Header label (only visible on page 1)
-    var headerLabel = group.querySelector('.pg-header-label');
-    if (headerLabel) {
-      headerLabel.textContent = totalPages > 1 ? '(Page 1 of ' + totalPages + ')' : '(1 of 1)';
-    }
-
-    // Footer total (repeats on every page of this order)
-    var footerTotal = group.querySelector('.pg-footer-total');
-    if (footerTotal) {
-      footerTotal.textContent = totalPages > 1 ? totalPages + ' pages total' : '';
-    }
-  }
-
-  setTimeout(function() { window.print(); }, 300);
-};
-</script>
 </body>
 </html>
