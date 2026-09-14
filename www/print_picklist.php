@@ -103,9 +103,6 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 .order-page-header{font-size:11px;font-weight:700;color:#013d3c;margin-bottom:6px;padding:6px 10px;background:#e6f7f7;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
 .order-page-header .badge{background:#013d3c;color:#fff;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600}
 
-/* Page footer banner */
-.page-footer-banner{margin-top:4px;padding:4px 10px;text-align:center;font-size:9px;color:#64748b;border-top:1px solid #e2e8f0;background:#f8fafc}
-.page-footer-banner strong{color:#013d3c}
 
 @media print{#back-to-app{display:none!important}.print-bar{display:none!important}}
 </style>
@@ -277,11 +274,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       <?php endif; ?>
     </table>
 
-    <!-- Page footer banner -->
-    <div class="page-footer-banner">
-      <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>
-      <strong>Page <?= $pageNum ?> of <?= $totalPages ?></strong> — K-one Allocator — <?= date('d/m/Y H:i') ?>
-    </div>
+
   </div>
   <?php endforeach; ?>
 
