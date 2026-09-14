@@ -8,14 +8,13 @@ session_start();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Allocator — Picklist Generator</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/wms-style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
         /* ── Allocator-specific components (not in wms-style.css) ── */
+
+        @keyframes svg-spin { to { transform: rotate(360deg); } }
+        .svg-spin { animation: svg-spin 1s linear infinite; }
 
         .alloc-container {
             max-width: 800px;
@@ -362,7 +361,7 @@ session_start();
             font-weight: 600;
             color: var(--wms-heading);
         }
-        .merge-status-name i {
+        .merge-status-name svg {
             color: var(--wms-success);
             font-size: 1.2rem;
         }
@@ -392,7 +391,7 @@ session_start();
 <!-- ── Hero Banner ── -->
 <div class="alloc-container">
     <div class="wms-banner" style="margin-bottom:20px">
-        <h1><i class="fas fa-magic" style="margin-right:8px"></i>Allocator</h1>
+        <h1><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2L19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5 5 11l1.2 1.2"/></svg>Allocator</h1>
         <p>Generate picklist dari Excel order dengan alokasi FEFO</p>
         <a href="pickface_status.php" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:0.85rem;font-weight:600;color:var(--wms-primary);text-decoration:none;padding:6px 14px;background:rgba(255,255,255,0.15);border-radius:var(--radius-sm);transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -407,7 +406,7 @@ session_start();
     <!-- Sheet Info Card -->
     <div class="wms-card" style="margin-bottom:20px">
         <div class="wms-card-header">
-            <h2><i class="fas fa-th-list"></i> Sheet yang diproses</h2>
+            <h2><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg> Sheet yang diproses</h2>
         </div>
         <div class="wms-card-body">
             <div class="alloc-sheet-chips">
@@ -445,13 +444,13 @@ session_start();
                                style="display:none"
                                onchange="wmsFileSelected(this)"
                                aria-hidden="true">
-                        <i class="fas fa-file-excel alloc-dropzone-icon" aria-hidden="true"></i>
+                        <svg class="alloc-dropzone-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M10 17c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/></svg>
                         <p class="alloc-dropzone-title">Drop WMS file</p>
                     </div>
                     <div id="wmsFileInfo" class="merge-status" role="status">
-                        <span class="merge-status-name"><i class="fas fa-check-circle" aria-hidden="true"></i> <span id="wmsFileName"></span></span>
+                        <span class="merge-status-name"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> <span id="wmsFileName"></span></span>
                         <button class="merge-status-remove" onclick="clearWmsFile()" aria-label="Remove WMS file">
-                            <i class="fas fa-times" aria-hidden="true"></i> Remove
+                            <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> Remove
                         </button>
                     </div>
                 </div>
@@ -471,13 +470,13 @@ session_start();
                                style="display:none"
                                onchange="inboundFileSelected(this)"
                                aria-hidden="true">
-                        <i class="fas fa-file-invoice alloc-dropzone-icon" aria-hidden="true"></i>
+                        <svg class="alloc-dropzone-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
                         <p class="alloc-dropzone-title">Drop inbound file</p>
                     </div>
                     <div id="inboundFileInfo" class="merge-status" role="status">
-                        <span class="merge-status-name"><i class="fas fa-check-circle" aria-hidden="true"></i> <span id="inboundFileName"></span></span>
+                        <span class="merge-status-name"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> <span id="inboundFileName"></span></span>
                         <button class="merge-status-remove" onclick="clearInboundFile()" aria-label="Remove inbound file">
-                            <i class="fas fa-times" aria-hidden="true"></i> Remove
+                            <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> Remove
                         </button>
                     </div>
                 </div>
@@ -486,7 +485,7 @@ session_start();
                     class="wms-btn wms-btn-primary alloc-generate-btn"
                     onclick="startMerge()"
                     disabled>
-                <i class="fas fa-code-branch"></i> Merge Inbound
+                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg> Merge Inbound
             </button>
         </div>
     </div>
@@ -514,14 +513,14 @@ session_start();
                        style="display:none"
                        onchange="fileSelected(this)"
                        aria-hidden="true">
-                <i class="fas fa-cloud-upload-alt alloc-dropzone-icon" aria-hidden="true"></i>
+                <svg class="alloc-dropzone-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
                 <p class="alloc-dropzone-title">Drag &amp; drop atau klik untuk pilih file</p>
                 <p class="alloc-dropzone-hint">Format: .xlsx atau .xls &bull; Max 10MB</p>
             </div>
 
             <div id="fileInfo" class="alloc-file-info" role="status">
                 <div class="alloc-file-info-file">
-                    <i class="fas fa-file-excel alloc-file-info-icon" aria-hidden="true"></i>
+                    <svg class="alloc-file-info-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M10 17c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/></svg>
                     <div>
                         <div id="fileName" class="alloc-file-info-name"></div>
                         <div id="fileSize" class="alloc-file-info-size"></div>
@@ -530,7 +529,7 @@ session_start();
                 <button class="alloc-file-info-remove"
                         onclick="clearFile()"
                         aria-label="Hapus file yang dipilih">
-                    <i class="fas fa-times" aria-hidden="true"></i> Hapus
+                    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> Hapus
                 </button>
             </div>
 
@@ -538,7 +537,7 @@ session_start();
                     class="wms-btn wms-btn-primary alloc-generate-btn"
                     onclick="startAllocation()"
                     disabled>
-                <i class="fas fa-magic" aria-hidden="true"></i> Generate Picklist
+                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2L19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5 5 11l1.2 1.2"/></svg> Generate Picklist
             </button>
 
         </div>
@@ -547,7 +546,7 @@ session_start();
     <!-- Progress Card (hidden by default) -->
     <div id="progressSection" class="wms-card" style="margin-bottom:20px;display:none">
         <div class="wms-card-header">
-            <h2><i class="fas fa-spinner fa-spin"></i> Memproses allocation...</h2>
+            <h2><svg class="svg-spin" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Memproses allocation...</h2>
         </div>
         <div class="wms-card-body">
             <div class="alloc-progress-wrap"
@@ -565,7 +564,7 @@ session_start();
     <!-- Results Card (hidden by default) -->
     <div id="resultsSection" class="wms-card" style="margin-bottom:20px;display:none">
         <div class="wms-card-header">
-            <h2><i class="fas fa-check-circle"></i> Allocation Selesai</h2>
+            <h2><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> Allocation Selesai</h2>
         </div>
         <div class="wms-card-body">
 
@@ -573,37 +572,37 @@ session_start();
 
             <div id="errorsSection" style="display:none;margin-bottom:16px">
                 <div class="alloc-section-title" style="color:var(--wms-danger)">
-                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Errors
+                    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Errors
                 </div>
                 <div id="errorsList" role="alert"></div>
             </div>
 
             <div id="picksSection" style="margin-bottom:16px">
                 <div class="alloc-section-title">
-                    <i class="fas fa-list" style="color:var(--wms-primary)" aria-hidden="true"></i> Picks
+                    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--wms-primary)" aria-hidden="true"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg> Picks
                 </div>
                 <div id="picksList" class="alloc-picks-scroll"></div>
             </div>
 
             <div id="replenishmentsSection" style="display:none;margin-bottom:16px">
                 <div class="alloc-section-title" style="color:var(--wms-warn)">
-                    <i class="fas fa-exchange-alt" aria-hidden="true"></i> Replenishments
+                    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg> Replenishments
                 </div>
                 <div id="replenishmentsList"></div>
             </div>
 
             <div class="alloc-actions">
                 <a id="downloadBtn" href="#" class="wms-btn wms-btn-success">
-                    <i class="fas fa-download" aria-hidden="true"></i> Download Excel
+                    <span class="btn-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Download Excel
                 </a>
                 <a id="downloadWmsBtn" href="#" class="wms-btn wms-btn-primary" style="display:none">
-                    <i class="fas fa-file-excel" aria-hidden="true"></i> Download Updated WMS Sheet
+                    <span class="btn-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M10 17c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/></svg></span> Download Updated WMS Sheet
                 </a>
                 <a id="printBtn" href="#" target="_blank" class="wms-btn wms-btn-primary">
-                    <i class="fas fa-print" aria-hidden="true"></i> Print Picklist
+                    <span class="btn-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect width="12" height="8" x="6" y="14" rx="1"/></svg></span> Print Picklist
                 </a>
                 <button onclick="resetAllocation()" class="wms-btn wms-btn-ghost">
-                    <i class="fas fa-redo" aria-hidden="true"></i> Allocation Lagi
+                    <span class="btn-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span> Allocation Lagi
                 </button>
             </div>
 
@@ -693,7 +692,7 @@ async function startMerge() {
     document.getElementById('resultsSection').style.display = 'none';
     mergeBtn.disabled = true;
     mergeBtn.classList.add('is-loading');
-    mergeBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Merging...';
+    mergeBtn.innerHTML = '<svg class="svg-spin" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Merging...';
 
     // Scroll progress into view
     document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -738,28 +737,33 @@ async function startMerge() {
                 <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-warn)">${stats.unmatched || 0}</div><div class="lbl">Unmatched</div></div>
             `;
 
-            // Show download button
-            document.getElementById('downloadBtn').href = 'download.php?file=' + encodeURIComponent(data.merged_file);
-            document.getElementById('downloadBtn').querySelector('i').className = 'fas fa-download';
-            document.getElementById('downloadBtn').childNodes[1].textContent = ' Download Merged File';
-
-            // Hide print & WMS buttons for merge results
+            // Hide allocation-only sections for merge results
+            document.getElementById('picksSection').style.display = 'none';
+            document.getElementById('replenishmentsSection').style.display = 'none';
             document.getElementById('printBtn').style.display = 'none';
             document.getElementById('downloadWmsBtn').style.display = 'none';
+
+            // Show download button — use downloadBtn for the merged WMS file
+            var dlBtn = document.getElementById('downloadBtn');
+            dlBtn.href = 'download.php?file=' + encodeURIComponent(data.merged_file) + '&filename=merged_wms_inbound';
+            dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+            // Fix: childNodes[0]=whitespace, [1]=<i>, [2]=text node — target the text node
+            var txtNode = dlBtn.childNodes[2];
+            if (txtNode) txtNode.textContent = ' Download Merged WMS';
 
             // Show unmatched items if any
             if (data.unmatched_items && data.unmatched_items.length > 0) {
                 document.getElementById('errorsSection').style.display = 'block';
                 document.getElementById('errorsSection').querySelector('.alloc-section-title').innerHTML =
-                    '<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Unmatched Inbound Items';
+                    '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Unmatched Inbound Items';
                 document.getElementById('errorsList').innerHTML = data.unmatched_items.map(item =>
-                    `<div class="alloc-error"><i class="fas fa-exclamation-circle" aria-hidden="true"></i>${item}</div>`
+                    `<div class="alloc-error"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>${item}</div>`
                 ).join('');
             }
         } else {
             document.getElementById('statsCards').innerHTML = `
                 <div class="alloc-error-grid">
-                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>${data.message || 'Merge gagal'}
+                    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>${data.message || 'Merge gagal'}
                 </div>
             `;
         }
@@ -814,7 +818,7 @@ async function startAllocation() {
   document.getElementById('resultsSection').style.display = 'none';
   importBtn.disabled = true;
   importBtn.classList.add('is-loading');
-  importBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Generating...';
+    importBtn.innerHTML = '<svg class="svg-spin" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Generating...';
 
   // Scroll progress into view
   document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -862,11 +866,24 @@ async function startAllocation() {
       if (data.errors && data.errors.length > 0) {
         document.getElementById('errorsSection').style.display = 'block';
         document.getElementById('errorsList').innerHTML = data.errors.map(e =>
-          `<div class="alloc-error"><i class="fas fa-exclamation-circle" aria-hidden="true"></i>${e}</div>`
+          `<div class="alloc-error"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>${e}</div>`
         ).join('');
       }
 
-      document.getElementById('downloadBtn').href = 'download.php?file=' + encodeURIComponent(data.picklist_file);
+      // Restore sections that merge flow may have hidden
+      document.getElementById('picksSection').style.display = '';
+      document.getElementById('replenishmentsSection').style.display = 'none';
+      document.getElementById('errorsSection').style.display = 'none';
+
+      // Reset download button for allocation picklist
+      var dlBtn = document.getElementById('downloadBtn');
+      dlBtn.href = 'download.php?file=' + encodeURIComponent(data.picklist_file);
+      dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+      var txtNode = dlBtn.childNodes[2];
+      if (txtNode) txtNode.textContent = ' Download Picklist';
+
+      // Show print and WMS buttons
+      document.getElementById('printBtn').style.display = '';
       if (data.updated_wms_file) {
         const wmsBtn = document.getElementById('downloadWmsBtn');
         wmsBtn.href = 'download.php?file=' + encodeURIComponent(data.updated_wms_file) + '&filename=updated_wms_sheet';
@@ -878,7 +895,7 @@ async function startAllocation() {
     } else {
       document.getElementById('statsCards').innerHTML = `
         <div class="alloc-error-grid">
-          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>${data.message || 'Allocation gagal'}
+          <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>${data.message || 'Allocation gagal'}
         </div>
       `;
     }
@@ -894,8 +911,22 @@ async function startAllocation() {
 function resetAllocation() {
   clearFile();
   document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('errorsSection').style.display = 'none';
   document.getElementById('progressBar').style.width = '0%';
   document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', '0');
+
+  // Restore sections that merge flow may have hidden
+  document.getElementById('picksSection').style.display = '';
+  document.getElementById('printBtn').style.display = '';
+  document.getElementById('downloadWmsBtn').style.display = 'none';
+
+  // Reset download button text
+  var dlBtn = document.getElementById('downloadBtn');
+  dlBtn.href = '#';
+  dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+  var txtNode = dlBtn.childNodes[2];
+  if (txtNode) txtNode.textContent = ' Download Excel';
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
