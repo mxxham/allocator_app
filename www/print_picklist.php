@@ -83,7 +83,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 .doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
+@page{counter-increment:page}
 @media print{
+  body{counter-reset:page}
   .page-footer-print{display:block!important;position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:9px;color:#64748b;padding:4px 16px;border-top:1px solid #e2e8f0;background:#fff;z-index:999}
 }
 .page-footer-print{display:none}
@@ -328,7 +330,14 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 </div>
 
-<div class="page-footer-print">K-one Allocator — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
+<div class="page-footer-print">K-one Allocator — Page <span class="pf-page-num"></span> of <span class="pf-page-total"></span> — <?= date('d/m/Y H:i') ?> — <?= $totalPicks ?> picks / <?= count($groupedPicks) ?> orders</div>
+
+<style>
+@media print{
+  .pf-page-num::after{content:counter(page)}
+  .pf-page-total::after{content:counter(pages)}
+}
+</style>
 
 <script>
 window.onload = function() {
