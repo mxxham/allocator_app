@@ -81,14 +81,13 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 .sig-box{padding-top:0}
 .sig-line{border-bottom:1px solid #cbd5e1;margin:0 0 6px}
 
-.doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
+.doc-footer{font-size:9px;color:#64748b;display-flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
 .page-footer-print{display:none}
 
-@page{counter-increment:page}
+@page{size:portrait;margin-bottom:28px;counter-increment:page}
 @media print{
   html{counter-reset:page}
-  .pg-num::after{content:counter(page)}
 }
 
 .order-group{margin-bottom:16px;page-break-after:always}
@@ -250,25 +249,19 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="10" class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — Qty: <?= number_format((float)$orderQty, 0) ?> — K-one Allocator — <?= date('d/m/Y H:i') ?> — Page <span class="pg-num"></span>
+          <td colspan="4" style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9">TOTAL QTY — Order <?= htmlspecialchars($no) ?></td>
+          <td style="padding:8px 10px;font-size:13px;font-weight:800;color:#013d3c;border-top:2px solid #013d3c;background:#f1f5f9;text-align:right"><?= number_format((float)$orderQty, 0) ?></td>
+          <td colspan="5" style="border-top:2px solid #013d3c;background:#f1f5f9"></td>
+        </tr>
+        <tr>
+          <td colspan="10" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
+            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?>
           </td>
         </tr>
       </tfoot>
     </table>
   </div>
   <?php endforeach; ?>
-  
-  <!-- Total Summary -->
-  <table style="margin-top:8px">
-    <tfoot>
-      <tr>
-        <td colspan="3" style="text-align:right;padding-right:10px">TOTAL</td>
-        <td class="r"><?= number_format($totalQty, 0) ?></td>
-        <td colspan="5"></td>
-      </tr>
-    </tfoot>
-  </table>
   <?php endif; ?>
 
   <!-- Replenishments -->
