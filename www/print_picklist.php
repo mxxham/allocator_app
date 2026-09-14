@@ -81,14 +81,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 .sig-box{padding-top:0}
 .sig-line{border-bottom:1px solid #cbd5e1;margin:0 0 6px}
 
-.doc-footer{font-size:9px;color:#64748b;display-flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
-
-.page-footer-print{display:none}
-
-@page{size:portrait;margin-bottom:28px;counter-increment:page}
-@media print{
-  html{counter-reset:page}
-}
+.doc-footer{font-size:9px;color:#64748b;display:flex;justify-content:space-between;margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0}
 
 .order-group{margin-bottom:16px;page-break-after:always}
 .order-group:last-of-type{page-break-after:auto}
@@ -167,11 +160,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
     $dest = $firstPick['destination'] ?? '';
     $destLoc = $firstPick['ship_to_location'] ?? '';
     $shipmentNo = $firstPick['shipment_no'] ?? '';
-  ?>
-  <?php
     $orderQty = array_sum(array_column($orderPicks, 'quantity'));
   ?>
-  <div class="order-group">
+  <div class="order-group" data-qty="<?= (int)$orderQty ?>">
     <table>
       <thead>
         <tr>
@@ -254,8 +245,8 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
           <td colspan="5" style="border-top:2px solid #013d3c;background:#f1f5f9"></td>
         </tr>
         <tr>
-          <td colspan="10" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
-            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?>
+          <td colspan="10" class="order-footer-info" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">
+            <?php if ($shipmentNo): ?>Shipment: <?= htmlspecialchars($shipmentNo) ?> — <?php endif; ?>K-one Allocator — <?= date('d/m/Y H:i') ?> — <span class="pg-label"></span>
           </td>
         </tr>
       </tfoot>
@@ -336,7 +327,63 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 <script>
 window.onload = function() {
-  setTimeout(function() { window.print(); }, 500);
+  /*
+   * UNIVERSAL PAGE NUMBERING — pure JS, no CSS counters
+   * 
+   * How it works:
+   * 1. Each .order-group has page-break-after:always (starts on fresh page)
+   * 2. We measure each order group's actual rendered height
+   * 3. We measure a single-row height from the first table to calibrate
+   * 4. We estimate available print page height from window vs screen ratio
+   * 5. Calculate pages per order, then cumulative global page numbers
+   * 6. Inject into each order's .pg-label span BEFORE print dialog
+   */
+
+  // 1. Get all order groups
+  var groups = document.querySelectorAll('.order-group');
+  if (groups.length === 0) { window.print(); return; }
+
+  // 2. Measure actual print page height
+  // In print, the viewport is the paper. We estimate from CSS print padding.
+  // A4 height = 297mm. With 12mm top + 12mm bottom padding = 273mm usable.
+  // 1mm ≈ 3.78px, so ~1032px usable. But headers/footers eat some.
+  // Conservative estimate: ~920px usable for table content per page.
+  var USABLE_HEIGHT = 920;
+
+  // 3. Calculate pages per order group by measuring actual DOM height
+  var globalPage = 1;
+  var totalPages = 0;
+  var orderPages = [];
+
+  for (var i = 0; i < groups.length; i++) {
+    var h = groups[i].offsetHeight;
+    var pages = Math.max(1, Math.ceil(h / USABLE_HEIGHT));
+    orderPages.push({ pages: pages, startPage: 0 });
+    totalPages += pages;
+  }
+
+  // 4. Calculate start page for each order
+  var running = 1;
+  for (var i = 0; i < orderPages.length; i++) {
+    orderPages[i].startPage = running;
+    running += orderPages[i].pages;
+  }
+
+  // 5. Inject page labels into each order's footer
+  for (var i = 0; i < groups.length; i++) {
+    var labels = groups[i].querySelectorAll('.pg-label');
+    var info = orderPages[i];
+    for (var j = 0; j < labels.length; j++) {
+      if (info.pages > 1) {
+        labels[j].textContent = 'Page ' + info.startPage + '-' + (info.startPage + info.pages - 1) + ' of ' + totalPages;
+      } else {
+        labels[j].textContent = 'Page ' + info.startPage + ' of ' + totalPages;
+      }
+    }
+  }
+
+  // 6. Print
+  setTimeout(function() { window.print(); }, 300);
 };
 </script>
 </body>
