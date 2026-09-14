@@ -245,6 +245,55 @@ class ExcelParser
     }
 
     /**
+     * Parse "MASTER DATA" sheet → product UPP and UOM (fallback when Master SKU fails)
+     * Columns: A=Material, E=UPP (Pallet)
+     * TYPE is inferred from UPP since MASTER DATA doesn't have a TYPE column.
+     */
+    public function parseMasterData(): array
+    {
+        $products = [];
+        foreach ($this->sheets as $name => $rows) {
+            if (strtolower($name) !== 'master data') continue;
+
+            // Find header row — look for "material" in row 1
+            $headerIdx = 0;
+            foreach ($rows as $idx => $row) {
+                $rowStr = strtolower(implode(' ', array_map(fn($v) => (string)($v ?? ''), $row)));
+                if (str_contains($rowStr, 'material') && str_contains($rowStr, 'upp')) {
+                    $headerIdx = $idx;
+                    break;
+                }
+            }
+
+            // Parse data rows
+            for ($i = $headerIdx + 1; $i < count($rows); $i++) {
+                $row = $rows[$i];
+                $material = trim((string)($row[0] ?? '')); // Column A
+                $upp = (int)($row[4] ?? 0); // Column E (UPP)
+
+                if ($material === '' || $upp <= 0) continue;
+
+                // Infer UOM type from UPP
+                $uomType = match (true) {
+                    $upp === 1 => 'Fluidbag',
+                    $upp === 4 => 'Drum',
+                    in_array($upp, [36, 44, 48], true) => 'Carton',
+                    $upp === 24 => 'Pail',
+                    default => 'Drum',
+                };
+
+                $products[$material] = [
+                    'material' => $material,
+                    'upp' => $upp,
+                    'uom_type' => $uomType,
+                ];
+            }
+            break;
+        }
+        return $products;
+    }
+
+    /**
      * Parse "WMS" sheet → bin locations with stock
      * Columns: H=Location, I=Batch, K=Expired Date, L=Item Code, AE=On Hand Qty, AL=UOM
      */

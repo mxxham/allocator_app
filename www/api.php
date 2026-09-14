@@ -57,6 +57,11 @@ try {
             $masterSku = $parser->parseMasterSku();
             $wmsLocations = $parser->parseWmsLocations();
 
+            // Fallback: if Master SKU is empty, try MASTER DATA sheet
+            if (empty($masterSku)) {
+                $masterSku = $parser->parseMasterData();
+            }
+
             // Step 3: Initialize allocator
             $allocator = new Allocator();
             $allocator->loadProducts($masterSku);
@@ -175,6 +180,11 @@ try {
             $putaway = $parser->parsePutaway();
             $masterSku = $parser->parseMasterSku();
             $wmsLocations = $parser->parseWmsLocations();
+
+            // Fallback: if Master SKU is empty, try MASTER DATA sheet
+            if (empty($masterSku)) {
+                $masterSku = $parser->parseMasterData();
+            }
 
             // Step 3: Initialize allocator
             $allocator = new Allocator();
