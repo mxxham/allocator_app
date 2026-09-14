@@ -225,6 +225,8 @@ try {
                 'replenishments' => $result['replenishments'],
                 'errors' => $result['errors'],
                 'summary' => $result['summary'],
+                'order_meta' => $result['order_meta'] ?? [],
+                'updated_wms_file' => $updatedWmsFile,
                 'created_at' => date('Y-m-d H:i:s'),
             ]));
 
@@ -286,6 +288,68 @@ try {
                 'message' => count($confirmedPicks) . ' picks dikonfirmasi dan diterapkan ke WMS',
                 'confirmed_count' => count($confirmedPicks),
                 'updated_wms_file' => $updatedWmsFile,
+            ];
+
+            echo json_encode($response);
+            ob_end_flush();
+            break;
+
+        // ── Apply order decisions (confirm/stage/cancel) ──────────
+        case 'apply_order_decisions':
+            if (!isset($_POST['result_id']) || empty($_POST['result_id'])) {
+                throw new Exception('result_id tidak ditemukan');
+            }
+
+            if (!isset($_POST['decisions']) || empty($_POST['decisions'])) {
+                throw new Exception('Tidak ada keputusan order yang dikirim');
+            }
+
+            $resultId = $_POST['result_id'];
+            $decisions = json_decode($_POST['decisions'], true);
+
+            if (!is_array($decisions) || empty($decisions)) {
+                throw new Exception('Format decisions tidak valid');
+            }
+
+            // Load allocation result from temp file
+            $resultFile = sys_get_temp_dir() . '/allocator_' . $resultId . '.json';
+            if (!file_exists($resultFile)) {
+                throw new Exception('Allocation result tidak ditemukan — jalankan allocation ulang');
+            }
+
+            $allocationResult = json_decode(file_get_contents($resultFile), true);
+            if (!$allocationResult) {
+                throw new Exception('Gagal membaca allocation result');
+            }
+
+            // Load the WMS file path from the result
+            $wmsPath = $allocationResult['updated_wms_file'] ?? null;
+            if (!$wmsPath || !file_exists($wmsPath)) {
+                throw new Exception('WMS file tidak ditemukan — jalankan allocation ulang');
+            }
+
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(300);
+
+            // Apply all decisions at once
+            $updater = new WmsSheetUpdater();
+            $finalWmsFile = $updater->applyOrderDecisions($wmsPath, $allocationResult, $decisions);
+
+            // Count decisions
+            $confirmed = 0; $staged = 0; $cancelled = 0;
+            foreach ($decisions as $d) {
+                if ($d === 'confirm') $confirmed++;
+                elseif ($d === 'stage') $staged++;
+                elseif ($d === 'cancel') $cancelled++;
+            }
+
+            $response = [
+                'success' => true,
+                'message' => "{$confirmed} confirmed, {$staged} staged, {$cancelled} cancelled",
+                'confirmed' => $confirmed,
+                'staged' => $staged,
+                'cancelled' => $cancelled,
+                'final_wms_file' => $finalWmsFile,
             ];
 
             echo json_encode($response);

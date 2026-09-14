@@ -384,6 +384,145 @@ session_start();
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ── Order Confirmation ── */
+        .order-confirm-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .order-confirm-tally {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .tally-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .tally-badge--confirm { background: #dcfce7; color: #166534; }
+        .tally-badge--stage { background: #fef9c3; color: #854d0e; }
+        .tally-badge--cancel { background: #fee2e2; color: #991b1b; }
+        .tally-badge--pending { background: var(--wms-light); color: var(--wms-gray-500); }
+
+        .order-card {
+            background: var(--wms-gray-50);
+            border: 1px solid var(--wms-gray-200);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 10px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .order-card.is-confirm { border-left: 4px solid #16a34a; }
+        .order-card.is-stage { border-left: 4px solid #ca8a04; }
+        .order-card.is-cancel { border-left: 4px solid #dc2626; opacity: 0.7; }
+
+        .order-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .order-card-info h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--wms-heading);
+            margin: 0 0 2px;
+        }
+        .order-card-info p {
+            font-size: 0.8rem;
+            color: var(--wms-gray-400);
+            margin: 0;
+        }
+        .order-card-stats {
+            display: flex;
+            gap: 14px;
+            font-size: 0.8rem;
+            color: var(--wms-gray-500);
+            margin-bottom: 10px;
+        }
+        .order-card-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .order-card-stats .num {
+            font-weight: 700;
+            color: var(--wms-heading);
+        }
+
+        .order-card-picks {
+            font-size: 0.78rem;
+            color: var(--wms-gray-400);
+            margin-bottom: 10px;
+            max-height: 80px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .order-card-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .order-card-btns button {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-confirm {
+            background: #f0fdf4;
+            color: #166534;
+            border-color: #bbf7d0;
+        }
+        .btn-confirm:hover { background: #dcfce7; border-color: #16a34a; }
+        .btn-confirm.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+
+        .btn-stage {
+            background: #fefce8;
+            color: #854d0e;
+            border-color: #fde68a;
+        }
+        .btn-stage:hover { background: #fef9c3; border-color: #ca8a04; }
+        .btn-stage.active { background: #ca8a04; color: #fff; border-color: #ca8a04; }
+
+        .btn-cancel {
+            background: #fef2f2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+        .btn-cancel:hover { background: #fee2e2; border-color: #dc2626; }
+        .btn-cancel.active { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+        .order-card.is-cancel .order-card-picks { text-decoration: line-through; }
+
+        .apply-decisions-btn {
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px;
+            font-size: 1rem;
+        }
+        .apply-decisions-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body style="background:var(--wms-gray-100)">
@@ -609,6 +748,28 @@ session_start();
         </div>
     </div>
 
+    <!-- Order Confirmation Section (hidden by default) -->
+    <div id="confirmSection" class="wms-card" style="margin-bottom:20px;display:none">
+        <div class="wms-card-header">
+            <h2><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Konfirmasi Order</h2>
+        </div>
+        <div class="wms-card-body">
+            <div class="order-confirm-header">
+                <div class="order-confirm-tally">
+                    <span class="tally-badge tally-badge--confirm" id="tallyConfirm">✓ 0 Confirmed</span>
+                    <span class="tally-badge tally-badge--stage" id="tallyStage">📦 0 Staged</span>
+                    <span class="tally-badge tally-badge--cancel" id="tallyCancel">✗ 0 Cancelled</span>
+                    <span class="tally-badge tally-badge--pending" id="tallyPending">⏳ 0 Pending</span>
+                </div>
+            </div>
+            <div id="orderCards"></div>
+            <button id="applyDecisionsBtn" class="wms-btn wms-btn-success apply-decisions-btn" disabled onclick="applyDecisions()">
+                <span class="btn-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></span>
+                Apply Semua ke WMS
+            </button>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -778,6 +939,8 @@ async function startMerge() {
 
 /* ── Allocation flow (original) ── */
 let selectedFile = null;
+let allocationData = null; // Store full allocation response
+let orderDecisions = {};   // { order_no: 'confirm'|'stage'|'cancel' }
 
 const dz = document.getElementById('dropZone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('is-drag'); });
@@ -853,44 +1016,22 @@ async function startAllocation() {
     document.getElementById('resultsSection').style.display = 'block';
 
     if (data.success) {
+      allocationData = data;
       const s = data.summary;
-      document.getElementById('statsCards').innerHTML = `
-        <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-primary)">${s.total_orders}</div><div class="lbl">Shipments</div></div>
-        <div class="alloc-stat" style="background:var(--wms-lighter)"><div class="num" style="color:var(--wms-primary)">${s.total_deliveries}</div><div class="lbl">Deliveries</div></div>
-        <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-primary)">${s.total_items}</div><div class="lbl">Items</div></div>
-        <div class="alloc-stat" style="background:var(--wms-lighter)"><div class="num" style="color:var(--wms-success)">${s.full_pallet_picks}</div><div class="lbl">Full Pallet</div></div>
-        <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-info)">${s.pickface_picks}</div><div class="lbl">Pickface</div></div>
-        <div class="alloc-stat" style="background:#fef9c3"><div class="num" style="color:var(--wms-warn)">${s.replenishments}</div><div class="lbl">Replenish</div></div>
-      `;
 
+      // Hide old results, show order confirmation
+      document.getElementById('resultsSection').style.display = 'none';
+      document.getElementById('confirmSection').style.display = 'block';
+
+      // Build order cards from picks grouped by order_no
+      renderOrderCards(data.picks, data.replenishments);
+
+      // Show errors if any
       if (data.errors && data.errors.length > 0) {
         document.getElementById('errorsSection').style.display = 'block';
         document.getElementById('errorsList').innerHTML = data.errors.map(e =>
           `<div class="alloc-error"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>${e}</div>`
         ).join('');
-      }
-
-      // Restore sections that merge flow may have hidden
-      document.getElementById('picksSection').style.display = '';
-      document.getElementById('replenishmentsSection').style.display = 'none';
-      document.getElementById('errorsSection').style.display = 'none';
-
-      // Reset download button for allocation picklist
-      var dlBtn = document.getElementById('downloadBtn');
-      dlBtn.href = 'download.php?file=' + encodeURIComponent(data.picklist_file);
-      dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
-      var txtNode = dlBtn.childNodes[2];
-      if (txtNode) txtNode.textContent = ' Download Picklist';
-
-      // Show print and WMS buttons
-      document.getElementById('printBtn').style.display = '';
-      if (data.updated_wms_file) {
-        const wmsBtn = document.getElementById('downloadWmsBtn');
-        wmsBtn.href = 'download.php?file=' + encodeURIComponent(data.updated_wms_file) + '&filename=updated_wms_sheet';
-        wmsBtn.style.display = '';
-      }
-      if (data.result_id) {
-        document.getElementById('printBtn').href = 'print_picklist.php?id=' + data.result_id;
       }
     } else {
       document.getElementById('statsCards').innerHTML = `
@@ -910,7 +1051,10 @@ async function startAllocation() {
 
 function resetAllocation() {
   clearFile();
+  allocationData = null;
+  orderDecisions = {};
   document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('confirmSection').style.display = 'none';
   document.getElementById('errorsSection').style.display = 'none';
   document.getElementById('progressBar').style.width = '0%';
   document.getElementById('progressBar').parentElement.setAttribute('aria-valuenow', '0');
@@ -928,6 +1072,154 @@ function resetAllocation() {
   if (txtNode) txtNode.textContent = ' Download Excel';
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Order Confirmation ── */
+function renderOrderCards(picks, replenishments) {
+  // Group picks by order_no
+  const byOrder = {};
+  picks.forEach(p => {
+    const key = p.order_no || 'unknown';
+    if (!byOrder[key]) byOrder[key] = { picks: [], totalQty: 0, items: new Set() };
+    byOrder[key].picks.push(p);
+    byOrder[key].totalQty += parseFloat(p.quantity || 0);
+    byOrder[key].items.add(p.item_code);
+  });
+
+  const orderNos = Object.keys(byOrder);
+  orderDecisions = {};
+
+  // Get order_meta from allocation data for shipment/destination info
+  const meta = allocationData && allocationData.summary ? allocationData.summary : {};
+
+  let html = '';
+  orderNos.forEach((orderNo, idx) => {
+    const o = byOrder[orderNo];
+    orderDecisions[orderNo] = null; // undecided
+
+    const pickLines = o.picks.map(p =>
+      `${p.location} → ${p.item_code} × ${p.quantity}` + (p.batch_number ? ` (${p.batch_number})` : '')
+    ).join('<br>');
+
+    html += `
+      <div class="order-card" id="card-${orderNo}">
+        <div class="order-card-top">
+          <div class="order-card-info">
+            <h3>Order ${orderNo}</h3>
+            <p>${o.items.size} item types · ${o.picks.length} pick lines</p>
+          </div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--wms-primary)">${Math.round(o.totalQty)} <span style="font-size:0.7rem;font-weight:400;color:var(--wms-gray-400)">qty</span></div>
+        </div>
+        <div class="order-card-picks">${pickLines}</div>
+        <div class="order-card-btns">
+          <button class="btn-confirm" onclick="setDecision('${orderNo}','confirm')">✓ Confirm</button>
+          <button class="btn-stage" onclick="setDecision('${orderNo}','stage')">📦 Stage</button>
+          <button class="btn-cancel" onclick="setDecision('${orderNo}','cancel')">✗ Cancel</button>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('orderCards').innerHTML = html;
+  updateTally();
+}
+
+function setDecision(orderNo, decision) {
+  orderDecisions[orderNo] = decision;
+
+  // Update card visual state
+  const card = document.getElementById('card-' + orderNo);
+  card.className = 'order-card is-' + decision;
+
+  // Update button active states
+  card.querySelectorAll('.order-card-btns button').forEach(btn => btn.classList.remove('active'));
+  card.querySelector('.btn-' + (decision === 'confirm' ? 'confirm' : decision === 'stage' ? 'stage' : 'cancel')).classList.add('active');
+
+  updateTally();
+}
+
+function updateTally() {
+  let confirm = 0, stage = 0, cancel = 0, pending = 0;
+  Object.values(orderDecisions).forEach(d => {
+    if (d === 'confirm') confirm++;
+    else if (d === 'stage') stage++;
+    else if (d === 'cancel') cancel++;
+    else pending++;
+  });
+
+  document.getElementById('tallyConfirm').textContent = '✓ ' + confirm + ' Confirmed';
+  document.getElementById('tallyStage').textContent = '📦 ' + stage + ' Staged';
+  document.getElementById('tallyCancel').textContent = '✗ ' + cancel + ' Cancelled';
+  document.getElementById('tallyPending').textContent = '⏳ ' + pending + ' Pending';
+
+  // Enable apply button only when all orders are decided
+  document.getElementById('applyDecisionsBtn').disabled = (pending > 0);
+}
+
+async function applyDecisions() {
+  if (!allocationData || !allocationData.result_id) return;
+
+  const btn = document.getElementById('applyDecisionsBtn');
+  const btnText = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  btn.innerHTML = '<svg class="svg-spin" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Applying to WMS...';
+
+  const fd = new FormData();
+  fd.append('action', 'apply_order_decisions');
+  fd.append('result_id', allocationData.result_id);
+  fd.append('decisions', JSON.stringify(orderDecisions));
+
+  try {
+    const resp = await fetch('api.php', { method: 'POST', body: fd });
+    const data = await resp.json();
+
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+
+    if (data.success) {
+      // Show final results
+      document.getElementById('confirmSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'block';
+
+      const s = allocationData.summary;
+      document.getElementById('statsCards').innerHTML = `
+        <div class="alloc-stat" style="background:#dcfce7"><div class="num" style="color:#16a34a">${data.confirmed}</div><div class="lbl">Confirmed</div></div>
+        <div class="alloc-stat" style="background:#fef9c3"><div class="num" style="color:#ca8a04">${data.staged}</div><div class="lbl">Staged</div></div>
+        <div class="alloc-stat" style="background:#fee2e2"><div class="num" style="color:#dc2626">${data.cancelled}</div><div class="lbl">Cancelled</div></div>
+        <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-primary)">${s.total_items}</div><div class="lbl">Total Items</div></div>
+      `;
+
+      // Setup download button for final WMS
+      var dlBtn = document.getElementById('downloadBtn');
+      dlBtn.href = 'download.php?file=' + encodeURIComponent(data.final_wms_file) + '&filename=final_wms_updated';
+      dlBtn.querySelector('.btn-icon').innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>';
+      var txtNode = dlBtn.childNodes[2];
+      if (txtNode) txtNode.textContent = ' Download Final WMS';
+
+      // Show picklist download too
+      document.getElementById('printBtn').style.display = '';
+      if (allocationData.picklist_file) {
+        document.getElementById('printBtn').href = 'print_picklist.php?id=' + allocationData.result_id;
+      }
+      // Hide old WMS button (replaced by final WMS)
+      document.getElementById('downloadWmsBtn').style.display = 'none';
+
+      // Hide picks/replenishments sections (already processed)
+      document.getElementById('picksSection').style.display = 'none';
+      document.getElementById('replenishmentsSection').style.display = 'none';
+
+      btn.innerHTML = btnText;
+    } else {
+      alert('Error: ' + (data.message || 'Gagal apply decisions'));
+      btn.innerHTML = btnText;
+    }
+  } catch (err) {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+    btn.innerHTML = btnText;
+    alert('Error: ' + err.message);
+  }
 }
 </script>
 </body>
