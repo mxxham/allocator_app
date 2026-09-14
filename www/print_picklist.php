@@ -163,6 +163,9 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
     $destLoc = $firstPick['ship_to_location'] ?? '';
     $shipmentNo = $firstPick['shipment_no'] ?? '';
   ?>
+  <?php
+    $orderQty = array_sum(array_column($orderPicks, 'quantity'));
+  ?>
   <div class="order-group">
     <table>
       <thead>
@@ -241,7 +244,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="10" class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — K-one Allocator — <?= date('d/m/Y H:i') ?></td>
+          <td colspan="10" class="page-footer-line" style="text-align:center;font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:4px">Order: <?= htmlspecialchars($no) ?><?php if ($shipmentNo): ?> — Shipment: <?= htmlspecialchars($shipmentNo) ?><?php endif; ?> — Qty: <?= number_format((float)$orderQty, 0) ?> — K-one Allocator — <?= date('d/m/Y H:i') ?></td>
         </tr>
       </tfoot>
     </table>
