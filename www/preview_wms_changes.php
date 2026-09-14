@@ -35,20 +35,38 @@ foreach ($decisions as $d) {
     elseif ($d === 'cancel') $cancelCount++;
 }
 
-// Group picks by order_no
+// Group picks by order_no — only confirmed picks (staged/cancelled shown as summary only)
 $groupedPicks = [];
 foreach ($picks as $pick) {
     $no = $pick['order_no'] ?? 'Unknown';
-    if (!isset($groupedPicks[$no])) {
-        $groupedPicks[$no] = [];
+    $decision = $decisions[$no] ?? 'cancel';
+    // Only include picks from confirmed orders in the detail view
+    // Staged/cancelled orders show as summary line only
+    if ($decision === 'confirm') {
+        if (!isset($groupedPicks[$no])) {
+            $groupedPicks[$no] = [];
+        }
+        $groupedPicks[$no][] = $pick;
     }
-    $groupedPicks[$no][] = $pick;
+}
+
+// Collect staged/cancelled orders for summary section
+$nonConfirmedOrders = [];
+foreach ($decisions as $orderNo => $d) {
+    if ($d !== 'confirm') {
+        $orderPicks = array_filter($picks, fn($p) => ($p['order_no'] ?? '') === $orderNo);
+        $nonConfirmedOrders[$orderNo] = [
+            'decision' => $d,
+            'qty' => array_sum(array_column($orderPicks, 'quantity')),
+            'items' => count(array_unique(array_column($orderPicks, 'item_code'))),
+        ];
+    }
 }
 
 $orderKeys = array_keys($groupedPicks);
 $lastOrderKey = end($orderKeys);
 $totalPicks = count($picks);
-$totalQty = array_sum(array_column($picks, 'quantity'));
+$confirmedQty = array_sum(array_column(array_filter($picks, fn($p) => ($decisions[$p['order_no'] ?? ''] ?? 'cancel') === 'confirm'), 'quantity'));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -259,6 +277,45 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   </div>
   <?php endforeach; ?>
 
+  <!-- Staged / Cancelled orders — summary only (not in picklist) -->
+  <?php if (!empty($nonConfirmedOrders)): ?>
+  <div style="margin-top:20px;page-break-before:always">
+    <div class="section-title" style="color:#6b7280">Not in Picklist — <?= count($nonConfirmedOrders) ?> orders</div>
+    <table style="page-break-inside:avoid">
+      <thead>
+        <tr>
+          <th class="c" style="width:24px">No.</th>
+          <th>Order No</th>
+          <th>Status</th>
+          <th>Item Types</th>
+          <th class="r" style="width:50px">Total Qty</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php $idx = 0; foreach ($nonConfirmedOrders as $orderNo => $info): $idx++; ?>
+      <tr>
+        <td class="c" style="color:#94a3b8;font-size:13px"><?= $idx ?></td>
+        <td style="font-family:'SF Mono',Consolas,monospace;font-size:13px;font-weight:700;color:#0f172a"><?= htmlspecialchars($orderNo) ?></td>
+        <td>
+          <?php if ($info['decision'] === 'stage'): ?>
+          <span class="chip chip-staging">📦 Staged</span>
+          <?php else: ?>
+          <span class="chip chip-cancel">✗ Cancelled</span>
+          <?php endif; ?>
+        </td>
+        <td style="font-size:13px;color:#64748b"><?= $info['items'] ?></td>
+        <td class="r" style="font-weight:700"><?= number_format((float)$info['qty'], 0) ?></td>
+        <td style="font-size:12px;color:#9ca3af">
+          <?= $info['decision'] === 'stage' ? 'Picks moved to STAGING — not in picklist' : 'Order dibatalkan — tidak ada perubahan' ?>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
+
   <!-- Replenishments -->
   <?php if (!empty($replenishments)): ?>
   <div style="margin-top:20px;page-break-before:always">
@@ -298,7 +355,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   <div class="doc-footer">
     <span>K-one Allocator</span>
     <span>Dicetak: <?= date('d F Y H:i') ?> WIB</span>
-    <span><?= number_format($totalQty) ?> total qty / <?= $confirmCount ?> confirmed / <?= $stageCount ?> staged / <?= $cancelCount ?> cancelled</span>
+    <span><?= number_format($confirmedQty) ?> confirmed qty / <?= $confirmCount ?> confirmed / <?= $stageCount ?> staged / <?= $cancelCount ?> cancelled</span>
   </div>
 
 </div>

@@ -347,6 +347,17 @@ try {
             // (so preview_wms_changes.php can read them)
             $allocationResult['decisions'] = $decisions;
             $allocationResult['final_wms_file'] = $finalWmsFile;
+
+            // Regenerate picklist with ONLY confirmed picks (exclude staged/cancelled)
+            $confirmedPicks = array_values(array_filter($allocationResult['picks'] ?? [], function($pick) use ($decisions) {
+                $orderNo = $pick['order_no'] ?? '';
+                return ($decisions[$orderNo] ?? 'cancel') === 'confirm';
+            }));
+            $filteredResult = array_merge($allocationResult, ['picks' => $confirmedPicks]);
+            $generator = new PicklistGenerator();
+            $newPicklistFile = $generator->generate($filteredResult);
+            $allocationResult['picklist_file'] = $newPicklistFile;
+
             file_put_contents($resultFile, json_encode($allocationResult, JSON_PRETTY_PRINT));
 
             $response = [
