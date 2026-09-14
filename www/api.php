@@ -57,9 +57,15 @@ try {
             $masterSku = $parser->parseMasterSku();
             $wmsLocations = $parser->parseWmsLocations();
 
-            // Fallback: if Master SKU is empty, try MASTER DATA sheet
-            if (empty($masterSku)) {
-                $masterSku = $parser->parseMasterData();
+            // Merge MASTER DATA UPP values into Master SKU products
+            $masterData = $parser->parseMasterData();
+            foreach ($masterData as $mat => $data) {
+                if (!isset($masterSku[$mat])) {
+                    $masterSku[$mat] = $data;
+                } else {
+                    $masterSku[$mat]['upp'] = $data['upp'];
+                    $masterSku[$mat]['uom_type'] = $data['uom_type'];
+                }
             }
 
             // Step 3: Initialize allocator
@@ -181,9 +187,16 @@ try {
             $masterSku = $parser->parseMasterSku();
             $wmsLocations = $parser->parseWmsLocations();
 
-            // Fallback: if Master SKU is empty, try MASTER DATA sheet
-            if (empty($masterSku)) {
-                $masterSku = $parser->parseMasterData();
+            // Merge MASTER DATA UPP values into Master SKU products
+            $masterData = $parser->parseMasterData();
+            foreach ($masterData as $mat => $data) {
+                if (!isset($masterSku[$mat])) {
+                    $masterSku[$mat] = $data;
+                } else {
+                    // Override UPP and UOM type from MASTER DATA (more reliable)
+                    $masterSku[$mat]['upp'] = $data['upp'];
+                    $masterSku[$mat]['uom_type'] = $data['uom_type'];
+                }
             }
 
             // Step 3: Initialize allocator
