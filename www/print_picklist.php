@@ -49,7 +49,7 @@ foreach ($picks as $pick) {
 <title>Pick List — Allocator <?= date('d/m/Y') ?></title>
 <link rel="stylesheet" href="assets/css/print-shared.css">
 <style>
-.picklist-specific .document{padding:28px 32px}
+.picklist-specific .document{padding:12mm 14mm}
 @media print{.picklist-specific .document{padding:12mm 14mm}}
 
 .company-name{font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-.5px}
@@ -327,7 +327,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 
 <script>
 window.onload = function() {
-  var USABLE_HEIGHT = 920;
+  var USABLE_HEIGHT = 780; // A4=297mm, minus 12mm top+bottom+header+footer ≈ 780px in 96dpi
   var groups = document.querySelectorAll('.order-group');
   if (groups.length === 0) { window.print(); return; }
 
