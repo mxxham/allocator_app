@@ -11,6 +11,7 @@ require_once __DIR__ . '/classes/Allocator.php';
 require_once __DIR__ . '/classes/PicklistGenerator.php';
 require_once __DIR__ . '/classes/WmsSheetUpdater.php';
 require_once __DIR__ . '/classes/InboundMerger.php';
+require_once __DIR__ . '/classes/PickConfirmationParser.php';
 
 // Standalone — no auth required
 
@@ -212,9 +213,9 @@ try {
             $generator = new PicklistGenerator();
             $tempFile = $generator->generate($result);
 
-            // Step 5b: Update original WMS sheet with allocation deltas
+            // Step 5b: Apply ONLY replenishments/bin-to-bin to WMS (picks deferred)
             $updater = new WmsSheetUpdater();
-            $updatedWmsFile = $updater->apply($file['tmp_name'], $result);
+            $updatedWmsFile = $updater->applyReplenishmentsOnly($file['tmp_name'], $result);
 
             // Step 6: Save results to JSON for print access
             $resultId = uniqid('alloc_', true);
@@ -245,6 +246,46 @@ try {
                     'master_sku_products' => count($masterSku),
                     'wms_locations' => count($wmsLocations),
                 ],
+            ];
+
+            echo json_encode($response);
+            ob_end_flush();
+            break;
+
+        // ── Stage 3: Apply confirmed picks ──────────────────────────
+        case 'confirm_picks':
+            if (!isset($_FILES['picklist_file']) || $_FILES['picklist_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('Picklist file tidak diupload atau error upload');
+            }
+
+            if (!isset($_POST['wms_file']) || empty($_POST['wms_file'])) {
+                throw new Exception('WMS file path tidak ditemukan');
+            }
+
+            $picklistPath = $_FILES['picklist_file']['tmp_name'];
+            $wmsPath = $_POST['wms_file'];
+
+            if (!file_exists($wmsPath)) {
+                throw new Exception('WMS file tidak ditemukan di server');
+            }
+
+            // Parse the filled-in picklist
+            $parser = new PickConfirmationParser();
+            $confirmedPicks = $parser->parse($picklistPath);
+
+            if (empty($confirmedPicks)) {
+                throw new Exception('Tidak ada baris yang ditandai sebagai picked (Y/YES/DONE/1/TRUE)');
+            }
+
+            // Apply confirmed picks to WMS
+            $updater = new WmsSheetUpdater();
+            $updatedWmsFile = $updater->applyConfirmedPicks($wmsPath, $confirmedPicks);
+
+            $response = [
+                'success' => true,
+                'message' => count($confirmedPicks) . ' picks dikonfirmasi dan diterapkan ke WMS',
+                'confirmed_count' => count($confirmedPicks),
+                'updated_wms_file' => $updatedWmsFile,
             ];
 
             echo json_encode($response);

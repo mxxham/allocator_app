@@ -11,6 +11,90 @@ require_once __DIR__ . '/SharedSheetEditor.php';
 class WmsSheetUpdater extends SharedSheetEditor
 {
     /**
+     * Apply ONLY replenishment/bin-to-bin deltas to the WMS sheet.
+     * Picks are NOT applied — they will be applied later via applyConfirmedPicks()
+     * after the user physically picks and confirms the picklist.
+     *
+     * @param string $originalFilePath  Path to the original uploaded .xlsx
+     * @param array  $allocationResult  Full result from Allocator::allocate()
+     * @return string Path to the updated temp file
+     */
+    public function applyReplenishmentsOnly(string $originalFilePath, array $allocationResult): string
+    {
+        $outPath = tempnam(sys_get_temp_dir(), 'wms_replen_') . '.xlsx';
+        copy($originalFilePath, $outPath);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($outPath) !== true) {
+            throw new \Exception("Could not open workbook as zip archive.");
+        }
+
+        $this->loadSharedStrings($zip);
+
+        $sheetPath = $this->resolveSheetXmlPath($zip, 'WMS');
+        $xml = $zip->getFromName($sheetPath);
+        if ($xml === false) throw new \Exception("Could not read {$sheetPath}");
+
+        $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($xml);
+
+        $this->applyDeltas($dom, [
+            'picks' => [],  // Empty — do not apply picks yet
+            'replenishments' => $allocationResult['replenishments'],
+        ]);
+
+        $zip->deleteName($sheetPath);
+        $zip->addFromString($sheetPath, $dom->saveXML());
+        $zip->close();
+
+        $this->verifyIntegrity($originalFilePath, $outPath, $sheetPath);
+
+        return $outPath;
+    }
+
+    /**
+     * Apply confirmed picks to the WMS sheet.
+     * Decrements source bins for each confirmed pick.
+     *
+     * @param string $wmsFilePath      Path to the current WMS .xlsx (after replenishments)
+     * @param array  $confirmedPicks   Array of confirmed pick rows from PickConfirmationParser
+     * @return string Path to the updated temp file
+     */
+    public function applyConfirmedPicks(string $wmsFilePath, array $confirmedPicks): string
+    {
+        $outPath = tempnam(sys_get_temp_dir(), 'wms_picks_') . '.xlsx';
+        copy($wmsFilePath, $outPath);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($outPath) !== true) {
+            throw new \Exception("Could not open workbook as zip archive.");
+        }
+
+        $this->loadSharedStrings($zip);
+
+        $sheetPath = $this->resolveSheetXmlPath($zip, 'WMS');
+        $xml = $zip->getFromName($sheetPath);
+        if ($xml === false) throw new \Exception("Could not read {$sheetPath}");
+
+        $dom = new \DOMDocument();
+        $dom->preserveWhiteSpace = false;
+        $dom->loadXML($xml);
+
+        // Build deltas from confirmed picks only — decrement source bins
+        $result = ['picks' => $confirmedPicks, 'replenishments' => []];
+        $this->applyDeltas($dom, $result);
+
+        $zip->deleteName($sheetPath);
+        $zip->addFromString($sheetPath, $dom->saveXML());
+        $zip->close();
+
+        $this->verifyIntegrity($wmsFilePath, $outPath, $sheetPath);
+
+        return $outPath;
+    }
+
+    /**
      * Apply stock deltas from an allocation run directly onto the original
      * uploaded workbook's WMS sheet.
      *

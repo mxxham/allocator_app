@@ -86,7 +86,7 @@ class PicklistGenerator
         $sheet->setTitle('Picks');
 
         // Headers
-        $headers = ['Order No', 'Shipment No', 'Item Code', 'Location', 'Quantity', 'Type', 'Bin to Bin', 'Qty Moved', 'Batch', 'Expiry Date'];
+        $headers = ['Order No', 'Shipment No', 'Item Code', 'Location', 'Quantity', 'Type', 'Bin to Bin', 'Qty Moved', 'Batch', 'Expiry Date', 'Picked?'];
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
             $sheet->setCellValue("{$colLetter}1", $header);
@@ -106,11 +106,12 @@ class PicklistGenerator
             $sheet->setCellValue("H{$row}", $pick['qty_moved'] ?? '');
             $sheet->setCellValue("I{$row}", $pick['batch_number'] ?? '');
             $sheet->setCellValue("J{$row}", $pick['expiry_date'] ?? '');
+            $sheet->setCellValue("K{$row}", ''); // Picked? — blank for manual fill
             $row++;
         }
 
         // Auto-width
-        foreach (range('A', 'J') as $col) {
+        foreach (range('A', 'K') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }
