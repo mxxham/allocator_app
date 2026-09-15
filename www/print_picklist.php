@@ -12,6 +12,12 @@ date_default_timezone_set('Asia/Jakarta');
 $resultId = $_GET['id'] ?? null;
 if (!$resultId) { header('Location: index.php'); exit; }
 
+// Extract base result ID for back navigation (handles _single_{orderNo} suffix)
+$baseResultId = preg_replace('/_single_.*$/', '', $resultId);
+
+// Detect if this is a single-order print (hide replenishments)
+$isSingleOrder = (strpos($resultId, '_single_') !== false);
+
 $resultFile = sys_get_temp_dir() . '/allocator_' . $resultId . '.json';
 if (!file_exists($resultFile)) {
     header('Location: index.php?error=expired'); 
@@ -110,14 +116,14 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
 <body class="picklist-specific">
 
 <div id="back-to-app" style="position:fixed;top:12px;right:12px;z-index:9999">
-  <a href="javascript:window.close()" style="background:#0f172a;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;border:1px solid rgba(255,255,255,.15)">
-    Close &amp; Back
+  <a href="confirm_orders.php?id=<?= htmlspecialchars($baseResultId) ?>" style="background:#0f172a;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;border:1px solid rgba(255,255,255,.15)">
+    &larr; Back to Orders
   </a>
 </div>
 <div class="print-bar no-print">
   <div class="print-bar-title">Pick List — Allocator</div>
   <div class="btns">
-    <a class="btn-back" href="javascript:window.close()">Close</a>
+    <a class="btn-back" href="confirm_orders.php?id=<?= htmlspecialchars($baseResultId) ?>">&larr; Back to Orders</a>
     <button class="btn-print" onclick="window.print()">Print / PDF</button>
   </div>
 </div>
@@ -159,10 +165,12 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       <div class="lbl">Pickface Picks</div>
       <div class="val" style="font-family:'SF Mono',Consolas,monospace;color:#3b82f6"><?= $summary['pickface_picks'] ?? 0 ?></div>
     </div>
+    <?php if (!$isSingleOrder): ?>
     <div class="info-cell">
       <div class="lbl">Replenishments</div>
       <div class="val" style="font-family:'SF Mono',Consolas,monospace;color:#f59e0b"><?= $summary['replenishments'] ?? 0 ?></div>
     </div>
+    <?php endif; ?>
   </div>
 
   <!-- Picks Table — chunked per order -->
@@ -279,8 +287,8 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   <?php endforeach; ?>
   <?php endif; ?>
 
-  <!-- Replenishments -->
-  <?php if (!empty($replenishments)): ?>
+  <!-- Replenishments (hidden for single-order prints) -->
+  <?php if (!empty($replenishments) && !$isSingleOrder): ?>
   <div style="margin-top:20px;page-break-before:always">
     <div class="section-title" style="color:#f59e0b">Replenishment (<?= $totalReplenishments ?> tasks)</div>
     <table style="page-break-inside:avoid">
@@ -344,7 +352,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   <div class="doc-footer">
     <span>K-one Allocator</span>
     <span>Dicetak: <?= date('d F Y H:i') ?> WIB</span>
-    <span><?= number_format($totalQty) ?> total qty / <?= $totalPicks ?> picks / <?= $totalReplenishments ?> replenishments</span>
+    <span><?= number_format($totalQty) ?> total qty / <?= $totalPicks ?> picks<?= !$isSingleOrder ? " / {$totalReplenishments} replenishments" : '' ?></span>
   </div>
 
 </div>

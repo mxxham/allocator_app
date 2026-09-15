@@ -38,7 +38,7 @@ foreach ($decisions as $d) {
 // Group picks by order_no — only confirmed picks (staged/cancelled shown as summary only)
 $groupedPicks = [];
 foreach ($picks as $pick) {
-    $no = $pick['order_no'] ?? 'Unknown';
+    $no = $pick['no'] ?: ($pick['order_no'] ?? 'Unknown');
     $decision = $decisions[$no] ?? 'cancel';
     // Only include picks from confirmed orders in the detail view
     // Staged/cancelled orders show as summary line only
@@ -54,7 +54,7 @@ foreach ($picks as $pick) {
 $nonConfirmedOrders = [];
 foreach ($decisions as $orderNo => $d) {
     if ($d !== 'confirm') {
-        $orderPicks = array_filter($picks, fn($p) => ($p['order_no'] ?? '') === $orderNo);
+        $orderPicks = array_filter($picks, fn($p) => ($p['no'] ?: ($p['order_no'] ?? '')) === $orderNo);
         $nonConfirmedOrders[$orderNo] = [
             'decision' => $d,
             'qty' => array_sum(array_column($orderPicks, 'quantity')),
@@ -66,7 +66,7 @@ foreach ($decisions as $orderNo => $d) {
 $orderKeys = array_keys($groupedPicks);
 $lastOrderKey = end($orderKeys);
 $totalPicks = count($picks);
-$confirmedQty = array_sum(array_column(array_filter($picks, fn($p) => ($decisions[$p['order_no'] ?? ''] ?? 'cancel') === 'confirm'), 'quantity'));
+$confirmedQty = array_sum(array_column(array_filter($picks, fn($p) => ($decisions[$p['no'] ?: ($p['order_no'] ?? '')] ?? 'cancel') === 'confirm'), 'quantity'));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -168,7 +168,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       <div class="val" style="font-family:'SF Mono',Consolas,monospace;color:#16a34a"><?= $confirmCount ?> orders</div>
     </div>
     <div class="info-cell">
-      <div class="lbl">Staged</div>
+      <div class="lbl">Rescheduled</div>
       <div class="val" style="font-family:'SF Mono',Consolas,monospace;color:#ca8a04"><?= $stageCount ?> orders</div>
     </div>
     <div class="info-cell">
@@ -205,7 +205,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
       </div>
       <?php
         $badgeClass = $decision === 'confirm' ? 'badge-confirm' : ($decision === 'stage' ? 'badge-stage' : 'badge-cancel');
-        $badgeLabel = $decision === 'confirm' ? '✓ CONFIRMED' : ($decision === 'stage' ? '📦 STAGED' : '✗ CANCELLED');
+        $badgeLabel = $decision === 'confirm' ? '✓ CONFIRMED' : ($decision === 'stage' ? '↻ RESCHEDULED' : '✗ CANCELLED');
       ?>
       <span class="badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
     </div>
@@ -299,7 +299,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
         <td style="font-family:'SF Mono',Consolas,monospace;font-size:13px;font-weight:700;color:#0f172a"><?= htmlspecialchars($orderNo) ?></td>
         <td>
           <?php if ($info['decision'] === 'stage'): ?>
-          <span class="chip chip-staging">📦 Staged</span>
+          <span class="chip chip-staging">↻ Rescheduled</span>
           <?php else: ?>
           <span class="chip chip-cancel">✗ Cancelled</span>
           <?php endif; ?>
@@ -355,7 +355,7 @@ tfoot td{padding:10px;font-size:13px;color:#0f172a;background:#f1f5f9;font-weigh
   <div class="doc-footer">
     <span>K-one Allocator</span>
     <span>Dicetak: <?= date('d F Y H:i') ?> WIB</span>
-    <span><?= number_format($confirmedQty) ?> confirmed qty / <?= $confirmCount ?> confirmed / <?= $stageCount ?> staged / <?= $cancelCount ?> cancelled</span>
+    <span><?= number_format($confirmedQty) ?> confirmed qty / <?= $confirmCount ?> confirmed / <?= $stageCount ?> rescheduled / <?= $cancelCount ?> cancelled</span>
   </div>
 
 </div>

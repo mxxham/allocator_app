@@ -100,7 +100,7 @@ class WmsSheetUpdater extends SharedSheetEditor
      *
      * @param string $wmsFilePath      Path to the current WMS .xlsx (after replenishments)
      * @param array  $allocationResult Full allocation result (picks, replenishments, etc.)
-     * @param array  $decisions        [order_no => 'confirm'|'stage'|'cancel', ...]
+     * @param array  $decisions        ['no' => 'confirm'|'stage'|'cancel', ...]
      * @return string Path to the final updated temp file
      */
     public function applyOrderDecisions(string $wmsFilePath, array $allocationResult, array $decisions): string
@@ -163,7 +163,7 @@ class WmsSheetUpdater extends SharedSheetEditor
         // Collect picks grouped by order
         $picksByOrder = [];
         foreach ($allocationResult['picks'] as $pick) {
-            $orderNo = $pick['order_no'] ?? 'unknown';
+            $orderNo = $pick['no'] ?: ($pick['order_no'] ?? 'unknown');
             $picksByOrder[$orderNo][] = $pick;
         }
 

@@ -294,6 +294,91 @@ try {
             ob_end_flush();
             break;
 
+        // ── Confirm single order (per-order confirmation) ─────────
+        case 'confirm_single_order':
+            if (!isset($_POST['result_id']) || empty($_POST['result_id'])) {
+                throw new Exception('result_id tidak ditemukan');
+            }
+
+            if (!isset($_POST['order_no']) || empty($_POST['order_no'])) {
+                throw new Exception('order_no tidak ditemukan');
+            }
+
+            $resultId = $_POST['result_id'];
+            $orderNo = $_POST['order_no'];
+
+            // Load allocation result from temp file
+            $resultFile = sys_get_temp_dir() . '/allocator_' . $resultId . '.json';
+            if (!file_exists($resultFile)) {
+                throw new Exception('Allocation result tidak ditemukan — jalankan allocation ulang');
+            }
+
+            $allocationResult = json_decode(file_get_contents($resultFile), true);
+            if (!$allocationResult) {
+                throw new Exception('Gagal membaca allocation result');
+            }
+
+            // Load the WMS file path from the result
+            $wmsPath = $allocationResult['updated_wms_file'] ?? null;
+            if (!$wmsPath || !file_exists($wmsPath)) {
+                throw new Exception('WMS file tidak ditemukan — jalankan allocation ulang');
+            }
+
+            @ini_set('memory_limit', '512M');
+            @set_time_limit(300);
+
+            // Create single-entry decisions array: confirm this one order
+            $decisions = [$orderNo => 'confirm'];
+
+            // Apply decision to WMS
+            $updater = new WmsSheetUpdater();
+            $finalWmsFile = $updater->applyOrderDecisions($wmsPath, $allocationResult, $decisions);
+
+            // Regenerate picklist with confirmed picks only (filter picks where no matches)
+            $confirmedPicks = array_values(array_filter($allocationResult['picks'] ?? [], function($pick) use ($orderNo) {
+                $pickOrderNo = $pick['no'] ?: ($pick['order_no'] ?? '');
+                return $pickOrderNo === $orderNo;
+            }));
+
+            // Filter replenishments to only those relevant to confirmed picks
+            $confirmedItemCodes = array_unique(array_column($confirmedPicks, 'item_code'));
+            $confirmedLocations = array_unique(array_column($confirmedPicks, 'location'));
+            $confirmedReps = array_values(array_filter($allocationResult['replenishments'] ?? [], function($rep) use ($confirmedItemCodes, $confirmedLocations) {
+                return in_array($rep['item_code'] ?? '', $confirmedItemCodes) ||
+                       in_array($rep['to_location'] ?? '', $confirmedLocations);
+            }));
+
+            $filteredResult = array_merge($allocationResult, [
+                'picks' => $confirmedPicks,
+                'replenishments' => $confirmedReps,
+            ]);
+            $generator = new PicklistGenerator();
+            $newPicklistFile = $generator->generate($filteredResult);
+
+            // Save single-order print data to a SEPARATE file (don't overwrite main result)
+            $singleResultFile = sys_get_temp_dir() . '/allocator_' . $resultId . '_single_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $orderNo) . '.json';
+            $singleResult = [
+                'picks' => $confirmedPicks,
+                'replenishments' => $confirmedReps,
+                'errors' => [],
+                'summary' => $allocationResult['summary'] ?? [],
+                'created_at' => $allocationResult['created_at'] ?? date('Y-m-d H:i:s'),
+            ];
+            file_put_contents($singleResultFile, json_encode($singleResult, JSON_PRETTY_PRINT));
+
+            // Update main result JSON — only decisions, NOT picks/replenishments
+            $allocationResult['decisions'][$orderNo] = 'confirm';
+            $allocationResult['final_wms_file'] = $finalWmsFile;
+            file_put_contents($resultFile, json_encode($allocationResult, JSON_PRETTY_PRINT));
+
+            echo json_encode([
+                'success' => true,
+                'result_id' => $resultId,
+                'print_url' => 'print_picklist.php?id=' . $resultId . '_single_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $orderNo),
+            ]);
+            ob_end_flush();
+            break;
+
         // ── Apply order decisions (confirm/stage/cancel) ──────────
         case 'apply_order_decisions':
             if (!isset($_POST['result_id']) || empty($_POST['result_id'])) {
@@ -350,7 +435,7 @@ try {
 
             // Regenerate picklist with ONLY confirmed picks (exclude staged/cancelled)
             $confirmedPicks = array_values(array_filter($allocationResult['picks'] ?? [], function($pick) use ($decisions) {
-                $orderNo = $pick['order_no'] ?? '';
+                $orderNo = $pick['no'] ?: ($pick['order_no'] ?? '');
                 return ($decisions[$orderNo] ?? 'cancel') === 'confirm';
             }));
             $filteredResult = array_merge($allocationResult, ['picks' => $confirmedPicks]);
@@ -362,7 +447,7 @@ try {
 
             $response = [
                 'success' => true,
-                'message' => "{$confirmed} confirmed, {$staged} staged, {$cancelled} cancelled",
+                'message' => "{$confirmed} confirmed, {$staged} rescheduled, {$cancelled} cancelled",
                 'confirmed' => $confirmed,
                 'staged' => $staged,
                 'cancelled' => $cancelled,

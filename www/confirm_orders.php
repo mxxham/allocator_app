@@ -69,12 +69,21 @@ $orderCount = count(array_unique(array_map(fn($p) => $p['no'] ?: $p['order_no'],
         .tally-chip--pending .dot { background: var(--wms-gray-400); animation: pulse 1.5s infinite; }
 
         /* ── Order cards ── */
-        .order-card { background: #fff; border: 1px solid var(--wms-gray-200); border-radius: var(--radius-md); padding: 0; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s; overflow: hidden; animation: fadeInUp 0.3s ease both; }
+        .order-card { background: #fff; border: 1px solid var(--wms-gray-200); border-radius: var(--radius-md); padding: 0; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: all 0.25s cubic-bezier(.4,0,.2,1); overflow: hidden; animation: fadeInUp 0.3s ease both; position: relative; }
         .order-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-        .order-card.is-confirm { border-color: #22c55e; border-left: 4px solid #22c55e; }
-        .order-card.is-stage { border-color: #eab308; border-left: 4px solid #eab308; }
-        .order-card.is-cancel { border-color: #ef4444; border-left: 4px solid #ef4444; opacity: 0.7; }
-        .order-card.is-cancel:hover { opacity: 0.85; }
+
+        /* ── Decision states ── */
+        .order-card.is-confirm { border-color: #bbf7d0; background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); box-shadow: 0 2px 8px rgba(34,197,94,0.12), inset 0 0 0 1px rgba(34,197,94,0.08); }
+        .order-card.is-confirm::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #22c55e, #16a34a); border-radius: 3px 0 0 3px; }
+        .order-card.is-confirm:hover { box-shadow: 0 4px 12px rgba(34,197,94,0.18), inset 0 0 0 1px rgba(34,197,94,0.12); }
+
+        .order-card.is-stage { border-color: #fde68a; background: linear-gradient(135deg, #fefce8 0%, #fff 100%); box-shadow: 0 2px 8px rgba(234,179,8,0.12), inset 0 0 0 1px rgba(234,179,8,0.08); }
+        .order-card.is-stage::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #eab308, #ca8a04); border-radius: 3px 0 0 3px; }
+        .order-card.is-stage:hover { box-shadow: 0 4px 12px rgba(234,179,8,0.18), inset 0 0 0 1px rgba(234,179,8,0.12); }
+
+        .order-card.is-cancel { border-color: #fecaca; background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); box-shadow: 0 2px 8px rgba(239,68,68,0.1), inset 0 0 0 1px rgba(239,68,68,0.06); opacity: 0.85; }
+        .order-card.is-cancel::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #ef4444, #dc2626); border-radius: 3px 0 0 3px; }
+        .order-card.is-cancel:hover { opacity: 1; box-shadow: 0 4px 12px rgba(239,68,68,0.15), inset 0 0 0 1px rgba(239,68,68,0.1); }
 
         .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px 10px; }
         .card-identity { display: flex; align-items: center; gap: 10px; }
@@ -96,16 +105,28 @@ $orderCount = count(array_unique(array_map(fn($p) => $p['no'] ?: $p['order_no'],
 
         /* ── Decision buttons ── */
         .card-actions { display: flex; border-top: 1px solid var(--wms-gray-200); }
-        .dec-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--wms-gray-400); transition: all 0.15s; position: relative; }
+        .dec-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--wms-gray-400); transition: all 0.2s cubic-bezier(.4,0,.2,1); position: relative; }
         .dec-btn:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 20%; height: 60%; width: 1px; background: var(--wms-gray-200); }
         .dec-btn:hover { background: var(--wms-gray-50); }
-        .dec-btn .icon { font-size: 1rem; }
+        .dec-btn svg { flex-shrink: 0; }
         .dec-btn--confirm:hover { color: #16a34a; background: #f0fdf4; }
-        .dec-btn--confirm.active { color: #fff; background: linear-gradient(135deg, #22c55e, #16a34a); font-weight: 700; }
+        .dec-btn--confirm.active { color: #fff; background: linear-gradient(135deg, #22c55e, #16a34a); font-weight: 700; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(34,197,94,0.3); }
         .dec-btn--stage:hover { color: #ca8a04; background: #fefce8; }
-        .dec-btn--stage.active { color: #fff; background: linear-gradient(135deg, #eab308, #ca8a04); font-weight: 700; }
+        .dec-btn--stage.active { color: #fff; background: linear-gradient(135deg, #eab308, #ca8a04); font-weight: 700; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(234,179,8,0.3); }
         .dec-btn--cancel:hover { color: #dc2626; background: #fef2f2; }
-        .dec-btn--cancel.active { color: #fff; background: linear-gradient(135deg, #ef4444, #dc2626); font-weight: 700; }
+        .dec-btn--cancel.active { color: #fff; background: linear-gradient(135deg, #ef4444, #dc2626); font-weight: 700; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(239,68,68,0.3); }
+
+        /* ── Print & Confirm button ── */
+        .print-confirm-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; transition: all 0.15s; position: relative; }
+        .print-confirm-btn:hover { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 2px 8px rgba(22,163,74,0.3); }
+        .print-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .print-confirm-btn:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 20%; height: 60%; width: 1px; background: rgba(255,255,255,0.3); }
+        .print-confirm-btn svg { flex-shrink: 0; }
+
+        /* ── Confirmed order card (after Print & Konfirmasi) ── */
+        .order-card--confirmed { border-color: #bbf7d0 !important; background: linear-gradient(180deg, #dcfce7 0%, #f0fdf4 30%, #fff 100%) !important; box-shadow: 0 2px 12px rgba(34,197,94,0.15), inset 0 0 0 1px rgba(34,197,94,0.1) !important; }
+        .order-card--confirmed .card-icon { color: #16a34a !important; }
+        .order-card--confirmed .card-title { color: #166534 !important; }
 
         /* ── Apply button ── */
         .apply-section { margin-top: 16px; }
@@ -188,9 +209,12 @@ $orderCount = count(array_unique(array_map(fn($p) => $p['no'] ?: $p['order_no'],
             <div class="tally-row">
                 <span class="tally-chip tally-chip--pending" id="tallyPending"><span class="dot"></span><?= $orderCount ?> Pending</span>
                 <span class="tally-chip tally-chip--confirm" id="tallyConfirm" style="display:none"><span class="dot"></span><span id="tallyConfirmNum">0</span> Confirm</span>
-                <span class="tally-chip tally-chip--stage" id="tallyStage" style="display:none"><span class="dot"></span><span id="tallyStageNum">0</span> Stage</span>
+                <span class="tally-chip tally-chip--stage" id="tallyStage" style="display:none"><span class="dot"></span><span id="tallyStageNum">0</span> Reschedule</span>
                 <span class="tally-chip tally-chip--cancel" id="tallyCancel" style="display:none"><span class="dot"></span><span id="tallyCancelNum">0</span> Cancel</span>
-                <button class="confirm-all-btn" onclick="confirmAll()">✓ Confirm All</button>
+                <button class="confirm-all-btn" onclick="confirmAll()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Confirm All
+                </button>
             </div>
         </div>
         <div class="wms-card-body">
@@ -257,10 +281,11 @@ const ALLOCATION_DATA = <?= json_encode([
     'summary'   => $summary,
     'picklist_file' => $result['picklist_file'] ?? null,
     'order_meta' => $result['order_meta'] ?? null,
+    'decisions' => $result['decisions'] ?? [],
 ]) ?>;
 
 let allocationData = ALLOCATION_DATA;
-let orderDecisions = {};
+let orderDecisions = ALLOCATION_DATA.decisions || {};
 const TOTAL_ORDERS = <?= $orderCount ?>;
 
 /* ── Render order cards ── */
@@ -280,12 +305,11 @@ function renderOrderCards(picks) {
     });
 
     const noKeys = Object.keys(byNo).sort();
-    orderDecisions = {};
-
     let html = '';
     noKeys.forEach((no, i) => {
         const o = byNo[no];
-        orderDecisions[no] = null;
+        const existingDecision = orderDecisions[no] || null;
+        const isConfirmed = existingDecision === 'confirm';
 
         const pickLines = o.picks.map(p => {
             const batch = p.batch_number ? `<span class="batch">(${p.batch_number})</span>` : '';
@@ -306,15 +330,43 @@ function renderOrderCards(picks) {
             ? metaParts.join(' &middot; ')
             : `${o.items.size} item types &middot; ${o.picks.length} pick lines`;
 
+        // Confirmed badge
+        const confirmedBadge = isConfirmed
+            ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px 2px 6px;border-radius:12px;font-size:0.7rem;font-weight:700;margin-left:8px;display:inline-flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmed</span>`
+            : '';
+
+        // Buttons: if confirmed, show only Re-Print; otherwise show all buttons
+        const buttons = isConfirmed
+            ? `<button class="print-confirm-btn" onclick="window.location.href='print_picklist.php?id=${RESULT_ID}_single_${encodeURIComponent(no)}'">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                    Re-Print Picklist
+               </button>`
+            : `<button class="print-confirm-btn" id="printConfirm-${no}" onclick="confirmSingleOrder('${no}')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                    Print &amp; Konfirmasi
+               </button>
+               <button class="dec-btn dec-btn--confirm" onclick="setDecision(this.closest('.order-card').dataset.no,'confirm')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Confirm
+               </button>
+               <button class="dec-btn dec-btn--stage" onclick="setDecision(this.closest('.order-card').dataset.no,'stage')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    Reschedule
+               </button>
+               <button class="dec-btn dec-btn--cancel" onclick="setDecision(this.closest('.order-card').dataset.no,'cancel')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                    Cancel
+               </button>`;
+
         html += `
-            <div class="order-card" id="card-${no}" data-no="${no}" style="animation-delay:${i * 0.04}s">
+            <div class="order-card ${isConfirmed ? 'order-card--confirmed' : ''}" id="card-${no}" data-no="${no}" style="animation-delay:${i * 0.04}s">
                 <div class="card-top">
                     <div class="card-identity">
                         <div class="card-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                         </div>
                         <div>
-                            <div class="card-title">Order ${no}</div>
+                            <div class="card-title">Order ${no} ${confirmedBadge}</div>
                             <div class="card-subtitle">${subtitle}</div>
                         </div>
                     </div>
@@ -325,15 +377,7 @@ function renderOrderCards(picks) {
                 </div>
                 <div class="card-picks">${pickLines}</div>
                 <div class="card-actions">
-                    <button class="dec-btn dec-btn--confirm" onclick="setDecision(this.closest('.order-card').dataset.no,'confirm')">
-                        <span class="icon">&#10003;</span> Confirm
-                    </button>
-                    <button class="dec-btn dec-btn--stage" onclick="setDecision(this.closest('.order-card').dataset.no,'stage')">
-                        <span class="icon">&#128230;</span> Stage
-                    </button>
-                    <button class="dec-btn dec-btn--cancel" onclick="setDecision(this.closest('.order-card').dataset.no,'cancel')">
-                        <span class="icon">&#10007;</span> Cancel
-                    </button>
+                    ${buttons}
                 </div>
             </div>
         `;
@@ -433,7 +477,7 @@ async function applyDecisions() {
             const s = allocationData.summary;
             document.getElementById('statsCards').innerHTML = `
                 <div class="alloc-stat" style="background:#dcfce7"><div class="num" style="color:#16a34a">${data.confirmed}</div><div class="lbl">Confirmed</div></div>
-                <div class="alloc-stat" style="background:#fef9c3"><div class="num" style="color:#ca8a04">${data.staged}</div><div class="lbl">Staged</div></div>
+                <div class="alloc-stat" style="background:#fef9c3"><div class="num" style="color:#ca8a04">${data.staged}</div><div class="lbl">Rescheduled</div></div>
                 <div class="alloc-stat" style="background:#fee2e2"><div class="num" style="color:#dc2626">${data.cancelled}</div><div class="lbl">Cancelled</div></div>
                 <div class="alloc-stat" style="background:var(--wms-light)"><div class="num" style="color:var(--wms-primary)">${s.total_items}</div><div class="lbl">Total Items</div></div>
             `;
@@ -456,6 +500,37 @@ async function applyDecisions() {
         btn.disabled = false;
         btn.innerHTML = 'Apply Semua ke WMS';
         alert('Error: ' + err.message);
+    }
+}
+
+/* ── Print & Confirm single order ── */
+async function confirmSingleOrder(orderNo) {
+    const btn = document.getElementById('printConfirm-' + orderNo);
+    if (!btn) return;
+    const btnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="svg-spin" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Processing...';
+
+    const fd = new FormData();
+    fd.append('action', 'confirm_single_order');
+    fd.append('result_id', RESULT_ID);
+    fd.append('order_no', orderNo);
+
+    try {
+        const resp = await fetch('api.php', { method: 'POST', body: fd });
+        const data = await resp.json();
+
+        if (data.success && data.print_url) {
+            window.location.href = data.print_url;
+        } else {
+            alert('Error: ' + (data.message || 'Gagal konfirmasi order'));
+            btn.disabled = false;
+            btn.innerHTML = btnText;
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = btnText;
     }
 }
 
