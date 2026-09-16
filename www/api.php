@@ -115,14 +115,28 @@ try {
                 throw new Exception('Format file WMS harus .xlsx');
             }
 
-            // Validate inbound file
-            if (!isset($_FILES['inbound_file']) || $_FILES['inbound_file']['error'] !== UPLOAD_ERR_OK) {
-                throw new Exception('File inbound tidak diupload atau error upload');
+            // Validate inbound file (optional)
+            $inboundFile = null;
+            if (isset($_FILES['inbound_file']) && $_FILES['inbound_file']['error'] === UPLOAD_ERR_OK) {
+                $inboundFile = $_FILES['inbound_file'];
+                $inboundExt  = strtolower(pathinfo($inboundFile['name'], PATHINFO_EXTENSION));
+                if ($inboundExt !== 'xlsx') {
+                    throw new Exception('Format file inbound harus .xlsx');
+                }
             }
-            $inboundFile = $_FILES['inbound_file'];
-            $inboundExt  = strtolower(pathinfo($inboundFile['name'], PATHINFO_EXTENSION));
-            if ($inboundExt !== 'xlsx') {
-                throw new Exception('Format file inbound harus .xlsx');
+
+            // Validate schedule file (optional)
+            $scheduleFile = null;
+            if (isset($_FILES['schedule_file']) && $_FILES['schedule_file']['error'] === UPLOAD_ERR_OK) {
+                $scheduleFile = $_FILES['schedule_file'];
+                $scheduleExt  = strtolower(pathinfo($scheduleFile['name'], PATHINFO_EXTENSION));
+                if ($scheduleExt !== 'xlsx') {
+                    throw new Exception('Format file schedule harus .xlsx');
+                }
+            }
+
+            if (!$inboundFile && !$scheduleFile) {
+                throw new Exception('Minimal upload file inbound atau schedule');
             }
 
             // Raise limits for large files
@@ -130,21 +144,28 @@ try {
             @set_time_limit(300);
 
             $merger = new InboundMerger();
-            $rawResult = $merger->apply($wmsFile['tmp_name'], $inboundFile['tmp_name'], $inboundFile['name']);
+            $rawResult = $merger->apply(
+                $wmsFile['tmp_name'],
+                $inboundFile ? $inboundFile['tmp_name'] : null,
+                $scheduleFile ? $scheduleFile['tmp_name'] : null
+            );
             $result = json_decode($rawResult, true);
 
             $unmatched = $result['unmatched'] ?? [];
             $unmatchedCount = count($unmatched);
 
-            // Compute stats — matched = receipts that were merged into WMS
-            $parser = new ExcelParser();
-            $parser->load($inboundFile['tmp_name'], $inboundFile['name']);
-            $receiptCount = count($parser->parsePutaway());
-            $matchedCount = $receiptCount - $unmatchedCount;
+            // Compute stats
+            $matchedCount = 0;
+            if ($inboundFile) {
+                $parser = new ExcelParser();
+                $parser->load($inboundFile['tmp_name'], $inboundFile['name']);
+                $receiptCount = count($parser->parsePutaway());
+                $matchedCount = $receiptCount - $unmatchedCount;
+            }
 
             echo json_encode([
                 'success'       => true,
-                'message'       => 'Inbound merge selesai',
+                'message'       => 'Merge selesai',
                 'merged_file'   => $result['file'],
                 'unmatched'     => $unmatched,
                 'unmatched_items' => array_map(fn($u) => "{$u['location']} — {$u['reason']}", $unmatched),
@@ -152,6 +173,7 @@ try {
                     'merged'    => $matchedCount,
                     'matched'   => $matchedCount,
                     'unmatched' => $unmatchedCount,
+                    'has_schedule' => $scheduleFile !== null,
                 ],
             ]);
             ob_end_flush();

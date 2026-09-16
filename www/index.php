@@ -482,12 +482,38 @@ session_start();
                         </button>
                     </div>
                 </div>
+                <!-- Schedule file dropzone -->
+                <div>
+                    <p class="merge-label">New Schedule of the Day</p>
+                    <div id="scheduleDropZone"
+                         class="merge-dropzone"
+                         tabindex="0"
+                         role="button"
+                         aria-label="Upload schedule file — drag and drop or click to select"
+                         onclick="document.getElementById('scheduleFile').click()"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('scheduleFile').click()}">
+                        <input type="file"
+                               id="scheduleFile"
+                               accept=".xlsx,.xls"
+                               style="display:none"
+                               onchange="scheduleFileSelected(this)"
+                               aria-hidden="true">
+                        <svg class="alloc-dropzone-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h8"/></svg>
+                        <p class="alloc-dropzone-title">Drop schedule file</p>
+                    </div>
+                    <div id="scheduleFileInfo" class="merge-status" role="status">
+                        <span class="merge-status-name"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> <span id="scheduleFileName"></span></span>
+                        <button class="merge-status-remove" onclick="clearScheduleFile()" aria-label="Remove schedule file">
+                            <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> Remove
+                        </button>
+                    </div>
+                </div>
             </div>
             <button id="mergeBtn"
                     class="wms-btn wms-btn-primary alloc-generate-btn"
                     onclick="startMerge()"
                     disabled>
-                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg> Merge Inbound
+                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg> Merge
             </button>
         </div>
     </div>
@@ -619,6 +645,7 @@ session_start();
 /* ── Merge Inbound ── */
 let selectedWmsFile = null;
 let selectedInboundFile = null;
+let selectedScheduleFile = null;
 
 // --- WMS dropzone ---
 const wmsDz = document.getElementById('wmsDropZone');
@@ -678,15 +705,44 @@ function clearInboundFile() {
     updateMergeBtn();
 }
 
+// --- Schedule dropzone ---
+const scheduleDz = document.getElementById('scheduleDropZone');
+scheduleDz.addEventListener('dragover', e => { e.preventDefault(); scheduleDz.classList.add('is-drag'); });
+scheduleDz.addEventListener('dragleave', () => scheduleDz.classList.remove('is-drag'));
+scheduleDz.addEventListener('drop', e => {
+    e.preventDefault(); scheduleDz.classList.remove('is-drag');
+    const f = e.dataTransfer.files[0];
+    if (f && (f.name.endsWith('.xlsx') || f.name.endsWith('.xls'))) scheduleFileSelected({ files: [f] });
+    else alert('Pilih file .xlsx atau .xls');
+});
+
+function scheduleFileSelected(input) {
+    const file = input.files ? input.files[0] : input;
+    if (!file) return;
+    selectedScheduleFile = file;
+    document.getElementById('scheduleFileName').textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+    document.getElementById('scheduleFileInfo').classList.add('is-visible');
+    scheduleDz.classList.add('has-file');
+    updateMergeBtn();
+}
+
+function clearScheduleFile() {
+    selectedScheduleFile = null;
+    document.getElementById('scheduleFile').value = '';
+    document.getElementById('scheduleFileInfo').classList.remove('is-visible');
+    scheduleDz.classList.remove('has-file');
+    updateMergeBtn();
+}
+
 function updateMergeBtn() {
-    document.getElementById('mergeBtn').disabled = !(selectedWmsFile && selectedInboundFile);
+    document.getElementById('mergeBtn').disabled = !(selectedWmsFile && (selectedInboundFile || selectedScheduleFile));
 }
 
 /* ── Merge flow ── */
 let mergeResult = null;
 
 async function startMerge() {
-    if (!selectedWmsFile || !selectedInboundFile) return;
+    if (!selectedWmsFile || (!selectedInboundFile && !selectedScheduleFile)) return;
 
     const mergeBtn = document.getElementById('mergeBtn');
     const mergeBtnText = mergeBtn.innerHTML;
@@ -710,7 +766,8 @@ async function startMerge() {
     const fd = new FormData();
     fd.append('action', 'merge_inbound');
     fd.append('wms_file', selectedWmsFile);
-    fd.append('inbound_file', selectedInboundFile);
+    if (selectedInboundFile) fd.append('inbound_file', selectedInboundFile);
+    if (selectedScheduleFile) fd.append('schedule_file', selectedScheduleFile);
 
     try {
         progressBar.style.width = '50%';
